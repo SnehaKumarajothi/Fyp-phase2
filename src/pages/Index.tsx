@@ -29,6 +29,7 @@ interface Scheme {
   eligibility: string[];
   maxAmount: string;
   interestRate: string;
+  loanType?: string;
   questions: Array<{ key: string; label: string; labelEn: string }>;
 }
 
@@ -67,6 +68,7 @@ const Index = () => {
       eligibility: ["Age: 18-35", "Student", "Income < 8 LPA"],
       maxAmount: "₹12,00,000",
       interestRate: "4.5% p.a.",
+      loanType: "education",
       questions: [
         { key: "courseName", label: "பாடத்திட்டத்தின் பெயர்", labelEn: "Course Name" },
         { key: "instituteName", label: "நிறுவனத்தின் பெயர்", labelEn: "Institute Name" },
@@ -74,7 +76,85 @@ const Index = () => {
         { key: "totalFees", label: "மொத்த கட்டணம்", labelEn: "Total Fees" },
       ]
     },
+    {
+      id: "vehicle-loan-1",
+      name: "Vehicle Loan Scheme",
+      nameTa: "வாகன கடன் திட்டம்",
+      description: "Affordable vehicle loan for two-wheelers and four-wheelers",
+      descriptionTa: "இரு சக்கர மற்றும் நான்கு சக்கர வாகனங்களுக்கான மலிவு கடன்",
+      eligibility: ["Age: 21-60", "Employed", "Income > 2 LPA"],
+      maxAmount: "₹5,00,000",
+      interestRate: "7.5% p.a.",
+      loanType: "vehicle",
+      questions: [
+        { key: "vehicleType", label: "வாகன வகை", labelEn: "Vehicle Type" },
+        { key: "vehicleModel", label: "வாகன மாடல்", labelEn: "Vehicle Model" },
+        { key: "vehiclePrice", label: "வாகன விலை", labelEn: "Vehicle Price" },
+      ]
+    },
+    {
+      id: "housing-loan-1",
+      name: "Housing Loan Scheme",
+      nameTa: "வீட்டு கடன் திட்டம்",
+      description: "Low-interest housing loan for first-time home buyers",
+      descriptionTa: "முதல் முறை வீடு வாங்குபவர்களுக்கான குறைந்த வட்டி கடன்",
+      eligibility: ["Age: 23-65", "Income > 3 LPA", "First-time buyer"],
+      maxAmount: "₹25,00,000",
+      interestRate: "6.5% p.a.",
+      loanType: "housing",
+      questions: [
+        { key: "propertyLocation", label: "சொத்து இடம்", labelEn: "Property Location" },
+        { key: "propertyValue", label: "சொத்து மதிப்பு", labelEn: "Property Value" },
+        { key: "loanAmount", label: "கடன் தொகை", labelEn: "Loan Amount" },
+      ]
+    },
+    {
+      id: "business-loan-1",
+      name: "Business Loan Scheme",
+      nameTa: "வியாபார கடன் திட்டம்",
+      description: "Business expansion loan for small and medium enterprises",
+      descriptionTa: "சிறு மற்றும் நடுத்தர நிறுவனங்களுக்கான வியாபார விரிவாக்க கடன்",
+      eligibility: ["Age: 25-65", "Business owner", "Business > 2 years"],
+      maxAmount: "₹10,00,000",
+      interestRate: "8.5% p.a.",
+      loanType: "business",
+      questions: [
+        { key: "businessType", label: "வியாபார வகை", labelEn: "Business Type" },
+        { key: "businessAge", label: "வியாபார வயது", labelEn: "Business Age" },
+        { key: "annualRevenue", label: "ஆண்டு வருமானம்", labelEn: "Annual Revenue" },
+      ]
+    },
   ];
+
+  // Filter schemes based on situation description and eligibility
+  const filterSchemes = (situation: string, age: string, income: string, community: string): Scheme[] => {
+    const lowerSituation = situation.toLowerCase();
+    
+    // Detect loan type from situation description
+    let loanType = "";
+    if (lowerSituation.includes("education") || lowerSituation.includes("study") || lowerSituation.includes("college") || lowerSituation.includes("கல்வி")) {
+      loanType = "education";
+    } else if (lowerSituation.includes("vehicle") || lowerSituation.includes("car") || lowerSituation.includes("bike") || lowerSituation.includes("வாகன")) {
+      loanType = "vehicle";
+    } else if (lowerSituation.includes("house") || lowerSituation.includes("home") || lowerSituation.includes("housing") || lowerSituation.includes("வீடு")) {
+      loanType = "housing";
+    } else if (lowerSituation.includes("business") || lowerSituation.includes("enterprise") || lowerSituation.includes("வியாபார")) {
+      loanType = "business";
+    }
+    
+    // Filter schemes by loan type first
+    let filtered = mockSchemes.filter(scheme => {
+      if (loanType && scheme.loanType) {
+        return scheme.loanType === loanType;
+      }
+      return true; // If no loan type detected, show all
+    });
+    
+    // TODO: Further filter by age, income, community eligibility
+    // This is where RAG agent can do more sophisticated matching
+    
+    return filtered;
+  };
 
   // Generate JSON-RPC output when data collection is complete
   useEffect(() => {
@@ -98,10 +178,15 @@ const Index = () => {
       console.log("JSON-RPC Output (Basic Details):", jsonRpcOutput);
       
       // TODO: Pass to RAG Agent for scheme recommendations
-      // This is where you'll integrate your RAG agent
-      // The agent should receive the JSON-RPC message and return matching schemes
+      // Filter schemes based on situation description and eligibility
+      const filteredSchemes = filterSchemes(
+        userData.situation || "",
+        userData.age || "",
+        userData.yearlyEarning || "",
+        userData.community || ""
+      );
       
-      setRecommendedSchemes(mockSchemes);
+      setRecommendedSchemes(filteredSchemes);
       setStage("schemes");
       
       toast({
