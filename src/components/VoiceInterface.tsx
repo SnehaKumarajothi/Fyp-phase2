@@ -2,7 +2,9 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Mic, MicOff, Volume2, RotateCcw, Send } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Mic, MicOff, Volume2, RotateCcw, Send, Keyboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface VoiceInterfaceProps {
@@ -29,9 +31,31 @@ export const VoiceInterface = ({
   const [audioLevel, setAudioLevel] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentResponse, setCurrentResponse] = useState("");
+  const [inputMode, setInputMode] = useState<"voice" | "text">("voice");
+  const [textInput, setTextInput] = useState("");
+  const [timeRemaining, setTimeRemaining] = useState(20);
 
   const currentStepData = steps[currentStep];
   const isLastStep = currentStep === steps.length - 1;
+
+  // 20-second timer for voice recording
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isListening && timeRemaining > 0) {
+      interval = setInterval(() => {
+        setTimeRemaining((prev) => {
+          if (prev <= 1) {
+            handleStopListening();
+            return 20;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else if (!isListening) {
+      setTimeRemaining(20);
+    }
+    return () => clearInterval(interval);
+  }, [isListening, timeRemaining]);
 
   // Simulate audio level animation when listening
   useEffect(() => {
@@ -48,7 +72,15 @@ export const VoiceInterface = ({
 
   const handleStartListening = () => {
     onListeningChange(true);
-    // Simulate greeting or question in Tamil
+    setTimeRemaining(20);
+    
+    // TODO: Integrate with LangGraph Speech Agent (Phi-3 + Whisper)
+    // This is where you'll connect to your LangGraph agent
+    // Agent should: 1) Voice out the question in Tamil
+    //               2) Listen for 20 seconds
+    //               3) Transcribe using Whisper
+    //               4) Map response to field
+    
     const questions = {
       ta: [
         "உங்கள் பெயரை சொல்லுங்கள்?",
@@ -98,6 +130,15 @@ export const VoiceInterface = ({
       onStepComplete(currentStepData.key, transcript);
       setCurrentResponse("");
       onTranscriptChange("");
+      setTimeRemaining(20);
+    }
+  };
+
+  const handleTextSubmit = () => {
+    if (textInput.trim()) {
+      onStepComplete(currentStepData.key, textInput);
+      setTextInput("");
+      setCurrentResponse("");
     }
   };
 
@@ -125,48 +166,110 @@ export const VoiceInterface = ({
         </div>
       </Card>
 
-      {/* Voice Visualization */}
-      <div className="flex-1 flex items-center justify-center mb-6">
-        <div className="relative">
-          {/* Main voice button */}
-          <Button
-            onClick={isListening ? handleStopListening : handleStartListening}
-            disabled={isProcessing}
-            size="lg"
-            className={cn(
-              "w-32 h-32 rounded-full border-4 transition-all duration-300",
-              isListening 
-                ? "bg-voice-active hover:bg-voice-active border-voice-active shadow-voice animate-pulse" 
-                : "bg-primary hover:bg-primary/90 border-primary shadow-kiosk",
-              isProcessing && "bg-voice-processing border-voice-processing animate-spin"
-            )}
-          >
-            {isProcessing ? (
-              <RotateCcw className="w-8 h-8" />
-            ) : isListening ? (
-              <MicOff className="w-8 h-8" />
-            ) : (
-              <Mic className="w-8 h-8" />
-            )}
-          </Button>
+      {/* Input Mode Toggle */}
+      <div className="mb-6 flex justify-center gap-2">
+        <Button
+          onClick={() => setInputMode("voice")}
+          variant={inputMode === "voice" ? "default" : "outline"}
+          className="gap-2"
+        >
+          <Mic className="w-4 h-4" />
+          {language === "ta" ? "குரல்" : "Voice"}
+        </Button>
+        <Button
+          onClick={() => setInputMode("text")}
+          variant={inputMode === "text" ? "default" : "outline"}
+          className="gap-2"
+        >
+          <Keyboard className="w-4 h-4" />
+          {language === "ta" ? "உரை" : "Text"}
+        </Button>
+      </div>
 
-          {/* Audio level visualization */}
+      {/* Voice Mode */}
+      {inputMode === "voice" && (
+        <div className="flex-1 flex flex-col items-center justify-center mb-6">
+          <div className="relative mb-4">
+            <Button
+              onClick={isListening ? handleStopListening : handleStartListening}
+              disabled={isProcessing}
+              size="lg"
+              className={cn(
+                "w-32 h-32 rounded-full border-4 transition-all duration-300",
+                isListening 
+                  ? "bg-voice-active hover:bg-voice-active border-voice-active shadow-voice animate-pulse" 
+                  : "bg-primary hover:bg-primary/90 border-primary shadow-kiosk",
+                isProcessing && "bg-voice-processing border-voice-processing animate-spin"
+              )}
+            >
+              {isProcessing ? (
+                <RotateCcw className="w-8 h-8" />
+              ) : isListening ? (
+                <MicOff className="w-8 h-8" />
+              ) : (
+                <Mic className="w-8 h-8" />
+              )}
+            </Button>
+
+            {isListening && (
+              <div className="absolute inset-0 -m-8">
+                {[...Array(5)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="absolute inset-0 rounded-full border-2 border-voice-active/30 animate-ping"
+                    style={{
+                      animationDelay: `${i * 0.2}s`,
+                      transform: `scale(${1 + (audioLevel / 100) * (i + 1) * 0.1})`,
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
           {isListening && (
-            <div className="absolute inset-0 -m-8">
-              {[...Array(5)].map((_, i) => (
-                <div
-                  key={i}
-                  className="absolute inset-0 rounded-full border-2 border-voice-active/30 animate-ping"
-                  style={{
-                    animationDelay: `${i * 0.2}s`,
-                    transform: `scale(${1 + (audioLevel / 100) * (i + 1) * 0.1})`,
-                  }}
-                />
-              ))}
-            </div>
+            <Badge variant="secondary" className="text-lg font-bold">
+              {timeRemaining}s
+            </Badge>
           )}
         </div>
-      </div>
+      )}
+
+      {/* Text Mode */}
+      {inputMode === "text" && (
+        <div className="flex-1 mb-6">
+          <Card className="p-4 bg-muted/50">
+            {isLastStep ? (
+              <Textarea
+                value={textInput}
+                onChange={(e) => setTextInput(e.target.value)}
+                placeholder={language === "ta" ? "உங்கள் நிலைமையை இங்கே விவரிக்கவும்..." : "Describe your situation here..."}
+                className="min-h-[200px] text-lg"
+              />
+            ) : (
+              <Input
+                value={textInput}
+                onChange={(e) => setTextInput(e.target.value)}
+                placeholder={language === "ta" ? "இங்கே தட்டச்சு செய்யவும்..." : "Type here..."}
+                className="text-lg"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleTextSubmit();
+                  }
+                }}
+              />
+            )}
+            <Button
+              onClick={handleTextSubmit}
+              className="mt-3 w-full bg-success hover:bg-success/90"
+              disabled={!textInput.trim()}
+            >
+              <Send className="w-4 h-4 mr-2" />
+              {language === "ta" ? "சமர்ப்பிக்கவும்" : "Submit"}
+            </Button>
+          </Card>
+        </div>
+      )}
 
       {/* Status and Controls */}
       <div className="space-y-4">
