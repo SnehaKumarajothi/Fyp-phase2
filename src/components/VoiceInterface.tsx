@@ -38,11 +38,6 @@ export const VoiceInterface = ({
   const currentStepData = steps[currentStep];
   const isLastStep = currentStep === steps.length - 1;
 
-  // Safety check: if currentStepData is undefined, return null
-  if (!currentStepData) {
-    return null;
-  }
-
   // 20-second timer for voice recording
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -146,6 +141,11 @@ export const VoiceInterface = ({
       setCurrentResponse("");
     }
   };
+
+  // Safety check after all hooks
+  if (!currentStepData) {
+    return null;
+  }
 
   return (
     <div className="flex-1 flex flex-col">
