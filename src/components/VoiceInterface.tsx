@@ -38,6 +38,11 @@ export const VoiceInterface = ({
   const currentStepData = steps[currentStep];
   const isLastStep = currentStep === steps.length - 1;
 
+  // Safety check: if currentStepData is undefined, return null
+  if (!currentStepData) {
+    return null;
+  }
+
   // 20-second timer for voice recording
   useEffect(() => {
     let interval: NodeJS.Timeout;
