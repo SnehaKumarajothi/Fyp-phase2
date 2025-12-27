@@ -1,4 +1,4 @@
-import { Check, Circle, AlertCircle } from "lucide-react";
+/*import { Check, Circle, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -43,7 +43,7 @@ export const DataCollectionProgress = ({
 
   return (
     <div className="space-y-4">
-      {/* Progress Overview */}
+      {/* Progress Overview *//*}
       <div className="text-center">
         <div className="text-3xl font-bold text-primary mb-2">
           {Object.keys(userData).length}/{steps.length}
@@ -53,7 +53,7 @@ export const DataCollectionProgress = ({
         </p>
       </div>
 
-      {/* Progress Bar */}
+      {/* Progress Bar *//*}
       <div className="w-full bg-muted rounded-full h-2">
         <div 
           className="bg-gradient-primary h-2 rounded-full transition-all duration-500"
@@ -61,7 +61,7 @@ export const DataCollectionProgress = ({
         />
       </div>
 
-      {/* Steps List */}
+      {/* Steps List *//*}
       <div className="space-y-3">
         {steps.map((step, index) => {
           const status = getStepStatus(index);
@@ -117,7 +117,7 @@ export const DataCollectionProgress = ({
         })}
       </div>
 
-      {/* Collected Data Summary */}
+      {/* Collected Data Summary *//*}
       {Object.keys(userData).length > 0 && (
         <Card className="p-4 bg-muted/30">
           <h4 className="text-sm font-semibold mb-3 text-kiosk-header">
@@ -141,7 +141,7 @@ export const DataCollectionProgress = ({
         </Card>
       )}
 
-      {/* Next Step Indicator */}
+      {/* Next Step Indicator *//*}
       {currentStep < steps.length && (
         <div className="text-center p-4 bg-gradient-primary/10 rounded-lg border border-primary/20">
           <p className="text-sm text-primary font-medium">
@@ -157,4 +157,128 @@ export const DataCollectionProgress = ({
       )}
     </div>
   );
+};*/
+
+import React from 'react';
+import { Check, Circle, AlertCircle } from "lucide-react";
+
+// Assuming UI component imports resolve from './ui/'
+import { Badge } from "./ui/badge";
+import { Card } from "./ui/card";
+// Assuming cn is correctly available
+const cn = (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(' ');
+
+
+// --- Type Definitions (Matching Index.tsx) ---
+type Language = "ta" | "en";
+interface Step { key: string; label: string; labelEn: string; }
+interface DataCollectionProgressProps {
+  steps: Step[];
+  currentStep: number;
+  userData: Record<string, string>;
+  language: Language;
+}
+// --- End Type Definitions ---
+
+
+export const DataCollectionProgress: React.FC<DataCollectionProgressProps> = ({
+  steps,
+  currentStep,
+  userData,
+  language,
+}) => {
+  const getStepStatus = (index: number) => {
+    if (index < currentStep) return "completed";
+    if (index === currentStep) return "current";
+    return "pending";
+  };
+
+  const getStepIcon = (index: number, step: Step) => {
+    const status = getStepStatus(index);
+    switch (status) {
+      case "completed": return <Check className="w-4 h-4 text-green-600" />;
+      case "current": return <AlertCircle className="w-4 h-4 text-blue-600 animate-pulse" />;
+      default: return <Circle className="w-4 h-4 text-gray-400" />;
+    }
+  };
+
+  const completedSteps = Object.values(userData).filter(v => v).length;
+
+  return (
+    <div className="space-y-4">
+      {/* Progress Overview */}
+      <div className="text-center">
+        <div className="text-3xl font-bold text-blue-600 mb-2">
+          {completedSteps}/{steps.length}
+        </div>
+        <p className="text-sm text-gray-500">
+          {language === "ta" ? "பூர்த்தி செய்யப்பட்ட படிகள்" : "Steps Completed"}
+        </p>
+      </div>
+
+      {/* Progress Bar */}
+      <div className="w-full bg-gray-200 rounded-full h-2">
+        <div 
+          className="bg-blue-600 h-2 rounded-full transition-all duration-500"
+          style={{ width: `${(completedSteps / steps.length) * 100}%` }}
+        />
+      </div>
+
+      {/* Steps List */}
+      <div className="space-y-3">
+        {steps.map((step: Step, index: number) => {
+          const status = getStepStatus(index);
+          const hasData = userData[step.key];
+          
+          return (
+            <Card 
+              key={step.key}
+              className={cn(
+                "p-4 transition-all duration-300 border",
+                status === "current" && "border-blue-600 bg-blue-50 shadow-md",
+                status === "completed" && "border-green-500 bg-green-50/50",
+                status === "pending" && "border-gray-200 bg-white"
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "w-8 h-8 rounded-full flex items-center justify-center",
+                  status === "current" && "bg-blue-100",
+                  status === "completed" && "bg-green-100",
+                  status === "pending" && "bg-gray-100"
+                )}>
+                  {getStepIcon(index, step)}
+                </div>
+                
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm text-gray-800">
+                      {language === "ta" ? step.label : step.labelEn}
+                    </span>
+                    {status === "completed" && (
+                      <Badge className="bg-green-100 text-green-700 text-xs">
+                        {language === "ta" ? "முடிந்தது" : "Done"}
+                      </Badge>
+                    )}
+                    {status === "current" && (
+                      <Badge className="bg-blue-100 text-blue-700 text-xs animate-pulse">
+                        {language === "ta" ? "நடப்பு" : "Current"}
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  {hasData && (
+                    <p className="text-xs text-gray-500 mt-1 truncate">
+                      {userData[step.key]?.toString().substring(0, 30)}
+                      {userData[step.key]?.toString().length > 30 ? "..." : ""}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
 };

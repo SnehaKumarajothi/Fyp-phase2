@@ -126,6 +126,8 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    /* Prevent horizontal overflow caused by a wide child while we tighten layout */
+    overflow-x: hidden;
   }
 }
 

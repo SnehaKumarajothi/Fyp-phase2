@@ -1,418 +1,248 @@
-import { useState, useEffect } from "react";
-import { VoiceInterface } from "@/components/VoiceInterface";
-import { DataCollectionProgress } from "@/components/DataCollectionProgress";
-import { LanguageSelector } from "@/components/LanguageSelector";
-import { SchemeRecommendations } from "@/components/SchemeRecommendations";
-import { SchemeQuestions } from "@/components/SchemeQuestions";
-import { ApplicationForm } from "@/components/ApplicationForm";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Mic, Settings, Volume2, ArrowLeft } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 
-interface UserData {
-  name: string;
-  age: string;
-  address: string;
-  yearlyEarning: string;
-  community: string;
-  situation: string;
-}
+import React, { useState, useMemo } from "react";
+// Assuming the build system resolves these component imports relative to src/
+import VoiceInterface from "../components/VoiceInterface";
+import { useIsMobile } from "../hooks/use-mobile";
+import { DataCollectionProgress } from "../components/DataCollectionProgress";
+import { LanguageSelector } from "../components/LanguageSelector";
+import { SchemeRecommendations } from "../components/SchemeRecommendations";
+import { SchemeQuestions } from "../components/SchemeQuestions";
+import { ApplicationForm } from "../components/ApplicationForm";
 
-interface Scheme {
-  id: string;
-  name: string;
-  nameTa: string;
-  description: string;
-  descriptionTa: string;
-  eligibility: string[];
-  maxAmount: string;
-  interestRate: string;
-  loanType?: string;
-  questions: Array<{ key: string; label: string; labelEn: string }>;
-}
+// Assuming UI components are correctly available
+import { Card } from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import { Mic, Settings, Volume2, ArrowLeft } from 'lucide-react';
 
+// Mock/Type Definitions (To avoid internal import issues)
+type Language = "ta" | "en";
 type AppStage = "data-collection" | "schemes" | "scheme-questions" | "application-form" | "success";
+interface Step { key: string; label: string; labelEn: string; }
 
-const Index = () => {
-  const { toast } = useToast();
-  const [stage, setStage] = useState<AppStage>("data-collection");
-  const [currentStep, setCurrentStep] = useState(0);
-  const [isListening, setIsListening] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState("ta");
-  const [userData, setUserData] = useState<Partial<UserData>>({});
-  const [currentTranscript, setCurrentTranscript] = useState("");
-  const [recommendedSchemes, setRecommendedSchemes] = useState<Scheme[]>([]);
-  const [selectedScheme, setSelectedScheme] = useState<Scheme | null>(null);
-  const [schemeAnswers, setSchemeAnswers] = useState<Record<string, string>>({});
-  const [applicationCounter, setApplicationCounter] = useState(1);
+interface AgentState {
+    user_id: string | null;
+    next_step_index: number;
+    llm_response_ta: string;
+    [key: string]: string | number | null | undefined; 
+}
+interface Scheme {
+    id: string; name: string; nameTa: string; description: string; descriptionTa: string;
+    eligibility: string[]; maxAmount: string; interestRate: string; keywords: string[];
+    formKey: string; questions: Step[];
+}
 
-  const steps = [
-    { key: "name", label: "பெயர்", labelEn: "Name" },
-    { key: "age", label: "வயது", labelEn: "Age" },
-    { key: "address", label: "முகவரி", labelEn: "Address" },
-    { key: "yearlyEarning", label: "ஆண்டு வருமானம்", labelEn: "Yearly Earning" },
-    { key: "community", label: "சமூகம்", labelEn: "Community" },
-    { key: "situation", label: "நிலைமை விளக்கம்", labelEn: "Situation Description" },
-  ];
-
-  // Mock schemes data - Replace with RAG agent integration
-  const mockSchemes: Scheme[] = [
-    {
-      id: "edu-loan-1",
-      name: "Education Loan Scheme",
-      nameTa: "கல்வி கடன் திட்டம்",
-      description: "Low-interest education loan for higher studies up to 12 lakhs",
-      descriptionTa: "12 லட்சம் வரை உயர் கல்விக்கான குறைந்த வட்டி கல்வி கடன்",
-      eligibility: ["Age: 18-35", "Student", "Income < 8 LPA"],
-      maxAmount: "₹12,00,000",
-      interestRate: "4.5% p.a.",
-      loanType: "education",
-      questions: [
-        { key: "courseName", label: "பாடத்திட்டத்தின் பெயர்", labelEn: "Course Name" },
-        { key: "instituteName", label: "நிறுவனத்தின் பெயர்", labelEn: "Institute Name" },
-        { key: "courseDuration", label: "பாடத்திட்ட காலம்", labelEn: "Course Duration" },
-        { key: "totalFees", label: "மொத்த கட்டணம்", labelEn: "Total Fees" },
-      ]
-    },
-    {
-      id: "vehicle-loan-1",
-      name: "Vehicle Loan Scheme",
-      nameTa: "வாகன கடன் திட்டம்",
-      description: "Affordable vehicle loan for two-wheelers and four-wheelers",
-      descriptionTa: "இரு சக்கர மற்றும் நான்கு சக்கர வாகனங்களுக்கான மலிவு கடன்",
-      eligibility: ["Age: 21-60", "Employed", "Income > 2 LPA"],
-      maxAmount: "₹5,00,000",
-      interestRate: "7.5% p.a.",
-      loanType: "vehicle",
-      questions: [
-        { key: "vehicleType", label: "வாகன வகை", labelEn: "Vehicle Type" },
-        { key: "vehicleModel", label: "வாகன மாடல்", labelEn: "Vehicle Model" },
-        { key: "vehiclePrice", label: "வாகன விலை", labelEn: "Vehicle Price" },
-      ]
-    },
-    {
-      id: "housing-loan-1",
-      name: "Housing Loan Scheme",
-      nameTa: "வீட்டு கடன் திட்டம்",
-      description: "Low-interest housing loan for first-time home buyers",
-      descriptionTa: "முதல் முறை வீடு வாங்குபவர்களுக்கான குறைந்த வட்டி கடன்",
-      eligibility: ["Age: 23-65", "Income > 3 LPA", "First-time buyer"],
-      maxAmount: "₹25,00,000",
-      interestRate: "6.5% p.a.",
-      loanType: "housing",
-      questions: [
-        { key: "propertyLocation", label: "சொத்து இடம்", labelEn: "Property Location" },
-        { key: "propertyValue", label: "சொத்து மதிப்பு", labelEn: "Property Value" },
-        { key: "loanAmount", label: "கடன் தொகை", labelEn: "Loan Amount" },
-      ]
-    },
-    {
-      id: "business-loan-1",
-      name: "Business Loan Scheme",
-      nameTa: "வியாபார கடன் திட்டம்",
-      description: "Business expansion loan for small and medium enterprises",
-      descriptionTa: "சிறு மற்றும் நடுத்தர நிறுவனங்களுக்கான வியாபார விரிவாக்க கடன்",
-      eligibility: ["Age: 25-65", "Business owner", "Business > 2 years"],
-      maxAmount: "₹10,00,000",
-      interestRate: "8.5% p.a.",
-      loanType: "business",
-      questions: [
-        { key: "businessType", label: "வியாபார வகை", labelEn: "Business Type" },
-        { key: "businessAge", label: "வியாபார வயது", labelEn: "Business Age" },
-        { key: "annualRevenue", label: "ஆண்டு வருமானம்", labelEn: "Annual Revenue" },
-      ]
-    },
-  ];
-
-  // Filter schemes based on situation description and eligibility
-  const filterSchemes = (situation: string, age: string, income: string, community: string): Scheme[] => {
-    const lowerSituation = situation.toLowerCase();
-    
-    // Detect loan type from situation description
-    let loanType = "";
-    if (lowerSituation.includes("education") || lowerSituation.includes("study") || lowerSituation.includes("college") || lowerSituation.includes("கல்வி")) {
-      loanType = "education";
-    } else if (lowerSituation.includes("vehicle") || lowerSituation.includes("car") || lowerSituation.includes("bike") || lowerSituation.includes("வாகன")) {
-      loanType = "vehicle";
-    } else if (lowerSituation.includes("house") || lowerSituation.includes("home") || lowerSituation.includes("housing") || lowerSituation.includes("வீடு")) {
-      loanType = "housing";
-    } else if (lowerSituation.includes("business") || lowerSituation.includes("enterprise") || lowerSituation.includes("வியாபார")) {
-      loanType = "business";
+const useToast = () => ({
+    toast: ({ title, description, duration, variant }: { title?: any; description?: any; duration?: any; variant?: any }) => {
+        console.log(`${variant ? `[${variant}] ` : ''}[TOAST] ${title}: ${description}`);
     }
+});
+const API_BASE_URL = 'http://localhost:5001';
+
+const INITIAL_AGENT_STATE: AgentState = {
+    user_id: null,
+    next_step_index: 0,
+    llm_response_ta: "தொடங்க மைக்ரோஃபோனை அழுத்தவும்.",
+    name: null, age: null, address: null, earning: null, community: null, situation: null,
+};
+
+const Index: React.FC = () => {
+    const isMobileDebug = useIsMobile();
+    const [viewportWidth, setViewportWidth] = useState<number>(typeof window !== 'undefined' ? window.innerWidth : 0);
+    React.useEffect(() => {
+        const onResize = () => setViewportWidth(window.innerWidth);
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+    }, []);
+    const { toast } = useToast();
+    const [stage, setStage] = useState<AppStage>("data-collection");
+    const [isListening, setIsListening] = useState(false);
+    const [selectedLanguage, setSelectedLanguage] = useState<Language>("ta");
+    const [agentState, setAgentState] = useState<AgentState>(INITIAL_AGENT_STATE);
+    const [currentTranscript, setCurrentTranscript] = useState("");
+    const [recommendedSchemes, setRecommendedSchemes] = useState<Scheme[]>([]);
+    const [selectedScheme, setSelectedScheme] = useState<Scheme | null>(null);
+    const [schemeAnswers, setSchemeAnswers] = useState<Record<string, string>>({});
     
-    // Filter schemes by loan type first
-    let filtered = mockSchemes.filter(scheme => {
-      if (loanType && scheme.loanType) {
-        return scheme.loanType === loanType;
-      }
-      return true; // If no loan type detected, show all
-    });
-    
-    // TODO: Further filter by age, income, community eligibility
-    // This is where RAG agent can do more sophisticated matching
-    
-    return filtered;
-  };
+    const [applicationCounter, setApplicationCounter] = useState<number>(
+        parseInt(localStorage.getItem("applicationNumber") || "0") + 1
+    );
 
-  // Generate JSON-RPC output when data collection is complete
-  useEffect(() => {
-    if (currentStep === steps.length && stage === "data-collection") {
-      const jsonRpcOutput = {
-        jsonrpc: "2.0",
-        method: "user_data_collected",
-        params: {
-          basicDetails: {
-            name: userData.name,
-            age: userData.age,
-            address: userData.address,
-            yearlyEarning: userData.yearlyEarning,
-            community: userData.community,
-          },
-          situationDescription: userData.situation,
-        },
-        id: Date.now(),
-      };
-      
-      console.log("JSON-RPC Output (Basic Details):", jsonRpcOutput);
-      
-      // TODO: Pass to RAG Agent for scheme recommendations
-      // Filter schemes based on situation description and eligibility
-      const filteredSchemes = filterSchemes(
-        userData.situation || "",
-        userData.age || "",
-        userData.yearlyEarning || "",
-        userData.community || ""
-      );
-      
-      setRecommendedSchemes(filteredSchemes);
-      setStage("schemes");
-      
-      toast({
-        title: selectedLanguage === "ta" ? "தகவல் சேகரிப்பு முடிந்தது" : "Data Collection Complete",
-        description: selectedLanguage === "ta" 
-          ? "பொருத்தமான திட்டங்களைக் கண்டுபிடிக்கிறோம்..." 
-          : "Finding matching schemes...",
-      });
-    }
-  }, [currentStep, stage, userData, selectedLanguage, toast]);
+    const steps: Step[] = [
+        { key: "name", label: "பெயர்", labelEn: "Name" },
+        { key: "age", label: "வயது", labelEn: "Age" },
+        { key: "address", label: "முகவரி", labelEn: "Address" },
+        { key: "earning", label: "ஆண்டு வருமானம்", labelEn: "Yearly Earning" },
+        { key: "community", label: "சமூகம்", labelEn: "Community" },
+        { key: "situation", label: "நிலைமை விளக்கம்", labelEn: "Situation Description" },
+    ];
 
-  const handleVoiceDescription = (text: string) => {
-    // TODO: Integrate TTS for voice description
-    console.log("Playing voice description:", text);
-    toast({
-      title: selectedLanguage === "ta" ? "குரல் விளக்கம்" : "Voice Description",
-      description: selectedLanguage === "ta" ? "விளக்கம் இயக்கப்படுகிறது..." : "Playing description...",
-    });
-  };
+    const userData: Record<string, string> = useMemo(() => ({
+        name: String(agentState.name || ""),
+        age: String(agentState.age || ""),
+        address: String(agentState.address || ""),
+        yearlyEarning: String(agentState.earning || ""),
+        community: String(agentState.community || ""),
+        situation: String(agentState.situation || ""),
+    }), [agentState]);
 
-  const handleBack = () => {
-    if (stage === "schemes") {
-      setStage("data-collection");
-      setCurrentStep(0);
-      setUserData({});
-    } else if (stage === "scheme-questions") {
-      setStage("schemes");
-      setSelectedScheme(null);
-    } else if (stage === "application-form") {
-      setStage("scheme-questions");
-      setSchemeAnswers({});
-    }
-  };
+    const handleDataCollectionComplete = async (finalData: Record<string, string>) => {
+        toast({
+            title: selectedLanguage === "ta" ? "சேகரிப்பு முடிந்தது..." : "Data Collection Complete...",
+            description: selectedLanguage === "ta" ? "திட்டப் பொருத்தத்திற்காக தரவு அனுப்பப்படுகிறது." : "Sending data for scheme matching.",
+            duration: 5000,
+        });
 
-  return (
-    <div className="min-h-screen bg-gradient-surface">
-      {/* Header */}
-      <header className="bg-kiosk-header text-white p-6 shadow-kiosk">
-        <div className="container mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {stage !== "data-collection" && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleBack}
-                className="text-white hover:bg-white/20"
-              >
-                <ArrowLeft className="w-6 h-6" />
-              </Button>
-            )}
-            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-              <Mic className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">தகவல் சேகரிப்பு முகவர்</h1>
-              <p className="text-white/80">Data Collection Agent</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
-              {selectedLanguage === "ta" ? "தமிழ்" : "English"}
-            </Badge>
-            <LanguageSelector 
-              selectedLanguage={selectedLanguage}
-              onLanguageChange={setSelectedLanguage}
-            />
-          </div>
-        </div>
-      </header>
-
-      <div className="container mx-auto p-6 max-w-7xl">
-        {stage === "data-collection" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-140px)]">
-            {/* Progress Panel */}
-            <div className="lg:col-span-1">
-              <Card className="h-full bg-kiosk-surface shadow-card border-0">
-                <div className="p-6">
-                  <h2 className="text-xl font-semibold mb-6 text-kiosk-header">
-                    {selectedLanguage === "ta" ? "முன்னேற்றம்" : "Progress"}
-                  </h2>
-                  <DataCollectionProgress 
-                    steps={steps}
-                    currentStep={currentStep}
-                    userData={userData}
-                    language={selectedLanguage}
-                  />
-                </div>
-              </Card>
-            </div>
-
-            {/* Main Voice Interface */}
-            <div className="lg:col-span-2">
-              <Card className="h-full bg-kiosk-surface shadow-card border-0">
-                <div className="p-8 h-full flex flex-col">
-                  <div className="flex items-center justify-between mb-8">
-                    <h2 className="text-2xl font-semibold text-kiosk-header">
-                      {selectedLanguage === "ta" ? "குரல் உரையாடல்" : "Voice Interaction"}
-                    </h2>
-                    <div className="flex items-center gap-2">
-                      <Volume2 className="w-5 h-5 text-muted-foreground" />
-                      <Settings className="w-5 h-5 text-muted-foreground" />
-                    </div>
-                  </div>
-
-                  <VoiceInterface
-                    isListening={isListening}
-                    onListeningChange={setIsListening}
-                    currentStep={currentStep}
-                    onStepComplete={(step, data) => {
-                      setUserData(prev => ({ ...prev, [step]: data }));
-                      if (currentStep < steps.length - 1) {
-                        setCurrentStep(prev => prev + 1);
-                      } else {
-                        setCurrentStep(prev => prev + 1);
-                      }
-                    }}
-                    language={selectedLanguage}
-                    steps={steps}
-                    transcript={currentTranscript}
-                    onTranscriptChange={setCurrentTranscript}
-                  />
-                </div>
-              </Card>
-            </div>
-          </div>
-        )}
-
-        {stage === "schemes" && (
-          <Card className="bg-kiosk-surface shadow-card border-0 p-8">
-            <SchemeRecommendations
-              schemes={recommendedSchemes}
-              language={selectedLanguage}
-              onSelectScheme={(scheme) => {
-                setSelectedScheme(scheme);
-                setStage("scheme-questions");
-              }}
-              onVoiceDescription={handleVoiceDescription}
-            />
-          </Card>
-        )}
-
-        {stage === "scheme-questions" && selectedScheme && (
-          <Card className="bg-kiosk-surface shadow-card border-0 p-8">
-            <SchemeQuestions
-              schemeName={selectedLanguage === "ta" ? selectedScheme.nameTa : selectedScheme.name}
-              questions={selectedScheme.questions}
-              language={selectedLanguage}
-              onComplete={(answers) => {
-                setSchemeAnswers(answers);
-                setStage("application-form");
-              }}
-            />
-          </Card>
-        )}
-
-        {stage === "application-form" && selectedScheme && (
-          <Card className="bg-kiosk-surface shadow-card border-0 p-8">
-            <ApplicationForm
-              applicationNumber={applicationCounter}
-              schemeName={selectedScheme.name}
-              schemeNameTa={selectedScheme.nameTa}
-              formFields={[
-                ...steps.slice(0, 5).map(step => ({
-                  key: step.key,
-                  label: step.label,
-                  labelTa: step.label,
-                  value: userData[step.key as keyof UserData] || "",
-                  editable: false,
-                })),
-                ...selectedScheme.questions.map(q => ({
-                  key: q.key,
-                  label: q.label,
-                  labelTa: q.label,
-                  value: schemeAnswers[q.key] || "",
-                  editable: false,
-                }))
-              ]}
-              language={selectedLanguage}
-              onSubmit={() => {
-                setApplicationCounter(prev => prev + 1);
+        try {
+            const response = await fetch(`${API_BASE_URL}/submit_and_match`, {
+                method: "POST",
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ collected_data: finalData, user_id: agentState.user_id })
+            });
+            const result = await response.json();
+            if (response.ok && result.status === 'success') {
+                setRecommendedSchemes(result.schemes);
+                setStage("schemes");
                 toast({
-                  title: selectedLanguage === "ta" ? "வெற்றி!" : "Success!",
-                  description: selectedLanguage === "ta" 
-                    ? "உங்கள் விண்ணப்பம் சமர்ப்பிக்கப்பட்டது"
-                    : "Your application has been submitted",
+                    title: selectedLanguage === "ta" ? "திட்டங்கள் கண்டறியப்பட்டன" : "Schemes Found",
+                    description: selectedLanguage === "ta" ? "உங்கள் நிலைக்கு பொருந்தும் திட்டங்கள் காண்பிக்கப்படும்." : "Matching schemes are being displayed.",
+                    duration: 3000,
                 });
-                setStage("success");
-              }}
-            />
-          </Card>
-        )}
+            } else if (response.status === 404) {
+                toast({
+                    title: selectedLanguage === "ta" ? "திட்டங்கள் இல்லை" : "No Schemes Found",
+                    description: selectedLanguage === "ta" ? "உங்கள் நிலைக்கு பொருந்தும் திட்டங்கள் எதுவும் இல்லை." : "No schemes matched your profile and situation.",
+                    duration: 5000,
+                });
+            } else {
+                throw new Error(result.message || "Unknown server error.");
+            }
+        } catch (error) {
+            console.error("Scheme Match Error:", error);
+            toast({
+                title: selectedLanguage === "ta" ? "பிழை ஏற்பட்டது" : "Error Occurred",
+                description: selectedLanguage === "ta" ? `சேவையகத்தில் திட்டப் பொருத்தத்தில் பிழை ஏற்பட்டது.` : `Failed to match schemes on server: ${(error as Error).message}`,
+                variant: 'destructive',
+                duration: 5000
+            });
+        }
+    };
 
-        {stage === "success" && (
-          <Card className="bg-kiosk-surface shadow-card border-0 p-12 text-center">
-            <div className="max-w-2xl mx-auto space-y-6">
-              <div className="w-20 h-20 bg-success/20 rounded-full flex items-center justify-center mx-auto">
-                <Mic className="w-10 h-10 text-success" />
-              </div>
-              <h2 className="text-3xl font-bold text-kiosk-header">
-                {selectedLanguage === "ta" ? "விண்ணப்பம் சமர்ப்பிக்கப்பட்டது!" : "Application Submitted!"}
-              </h2>
-              <p className="text-muted-foreground text-lg">
-                {selectedLanguage === "ta" 
-                  ? "உங்கள் விண்ணப்பம் வெற்றிகரமாக சமர்ப்பிக்கப்பட்டது. விரைவில் உங்களை தொடர்பு கொள்வோம்."
-                  : "Your application has been submitted successfully. We will contact you soon."}
-              </p>
-              <Button
-                onClick={() => {
-                  setStage("data-collection");
-                  setCurrentStep(0);
-                  setUserData({});
-                  setSelectedScheme(null);
-                  setSchemeAnswers({});
-                }}
-                size="lg"
-                className="mt-8"
-              >
-                {selectedLanguage === "ta" ? "புதிய விண்ணப்பம்" : "New Application"}
-              </Button>
+    const handleBack = () => {
+        if (stage === "schemes") {
+            setStage("data-collection");
+            setAgentState(INITIAL_AGENT_STATE);
+        } else if (stage === "scheme-questions") {
+            setStage("schemes");
+            setSelectedScheme(null);
+        } else if (stage === "application-form") {
+            setStage("scheme-questions");
+            setSchemeAnswers({});
+        }
+    };
+
+    const handleVoiceDescription = (text: string) => {
+        toast({ title: selectedLanguage === "ta" ? "குரல் விளக்கம்" : "Voice Description", description: text, duration: 2000 });
+    };
+
+    const handleStepComplete = (stepKey: string, value: string) => {
+        setAgentState(prev => {
+            const updated = { ...prev, [stepKey]: value } as AgentState;
+            const nextIdx = (prev.next_step_index || 0) + 1;
+            updated.next_step_index = nextIdx;
+            if (nextIdx >= steps.length) {
+                const finalData = {
+                    name: String(updated.name || ""),
+                    age: String(updated.age || ""),
+                    address: String(updated.address || ""),
+                    yearlyEarning: String(updated.earning || ""),
+                    community: String(updated.community || ""),
+                    situation: String(updated.situation || ""),
+                };
+                setTimeout(() => handleDataCollectionComplete(finalData), 0);
+            }
+            return updated;
+        });
+    };
+
+    return (
+        <div className="min-h-screen bg-gradient-surface">
+            <header className="bg-kiosk-header text-white shadow-kiosk">
+                <div className="max-w-screen-xl mx-auto flex items-center justify-between px-4 sm:px-6 lg:px-8 py-4">
+                    <div className="flex items-center gap-4">
+                        {stage !== "data-collection" && (
+                            <Button variant="ghost" size="icon" onClick={handleBack} className="text-white hover:bg-white/20">
+                                <ArrowLeft className="w-6 h-6" />
+                            </Button>
+                        )}
+                        <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                            <Mic className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold">தகவல் சேகர்ப்பு முகவர்</h1>
+                            <p className="text-white/80">Data Collection Agent</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <Badge variant="secondary" className="bg-white/20 text-white border-white/30">{selectedLanguage === "ta" ? "தமிழ்" : "English"}</Badge>
+                        <LanguageSelector selectedLanguage={selectedLanguage} onLanguageChange={(lang: string) => { if (lang === "ta" || lang === "en") setSelectedLanguage(lang as Language); }} />
+                        {/* DEBUG: show whether hook detects mobile and viewport width */}
+                        <div className="ml-2 text-sm text-white/90 bg-white/10 px-2 py-1 rounded">
+                            <span className="font-mono">{isMobileDebug ? 'MOBILE' : 'DESKTOP'}</span>
+                            <span className="ml-2">W:{viewportWidth}px</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            <div className="mx-auto px-4 sm:px-6 lg:px-8 max-w-screen-xl">
+                {stage === "data-collection" && (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-[calc(100vh-140px)]">
+                        <div className="lg:col-span-1">
+                            <Card className="h-full bg-kiosk-surface shadow-card border-0">
+                                <div className="p-6">
+                                    <h2 className="text-xl font-semibold mb-6 text-kiosk-header">{selectedLanguage === "ta" ? "முன்னேற்றம்" : "Progress"}</h2>
+                                    <DataCollectionProgress steps={steps} currentStep={agentState.next_step_index} userData={userData} language={selectedLanguage} />
+                                </div>
+                            </Card>
+                        </div>
+                        <div className="lg:col-span-2">
+                            <Card className="h-full bg-kiosk-surface shadow-card border-0">
+                                <div className="p-6 sm:p-8 h-full flex flex-col">
+                                    <div className="flex items-center justify-between mb-8">
+                                        <h2 className="text-2xl font-semibold text-kiosk-header">{selectedLanguage === "ta" ? "குரல் உரையாடல்" : "Voice Interaction"}</h2>
+                                        <div className="flex items-center gap-2"><Volume2 className="w-5 h-5 text-muted-foreground" /><Settings className="w-5 h-5 text-muted-foreground" /></div>
+                                    </div>
+                                    <VoiceInterface isListening={isListening} onListeningChange={setIsListening} currentStep={agentState.next_step_index} onStepComplete={handleStepComplete} onDataCollectionComplete={handleDataCollectionComplete} language={selectedLanguage} steps={steps} transcript={currentTranscript} onTranscriptChange={setCurrentTranscript} />
+                                </div>
+                            </Card>
+                        </div>
+                    </div>
+                )}
+                {stage === "schemes" && (
+                    <Card className="bg-kiosk-surface shadow-card border-0 p-8">
+                        <SchemeRecommendations schemes={recommendedSchemes} language={selectedLanguage} onSelectScheme={(scheme: any) => { setSelectedScheme(scheme); setStage("scheme-questions"); }} onVoiceDescription={handleVoiceDescription} />
+                    </Card>
+                )}
+                {stage === "scheme-questions" && selectedScheme && (
+                    <Card className="bg-kiosk-surface shadow-card border-0 p-8">
+                        <SchemeQuestions schemeName={selectedLanguage === "ta" ? selectedScheme.nameTa : selectedScheme.name} questions={selectedScheme.questions} language={selectedLanguage} onComplete={(answers: Record<string, string>) => { setSchemeAnswers(answers); setStage("application-form"); }} />
+                    </Card>
+                )}
+                {stage === "application-form" && selectedScheme && (
+                    <Card className="bg-kiosk-surface shadow-card border-0 p-8">
+                        <ApplicationForm applicationNumber={applicationCounter} schemeName={selectedScheme.name} schemeNameTa={selectedScheme.nameTa} formKey={selectedScheme.formKey} formFields={{ ...userData, ...schemeAnswers }} language={selectedLanguage} onSubmit={() => { localStorage.setItem("applicationNumber", applicationCounter.toString()); setApplicationCounter(prev => prev + 1); setStage("success"); }} />
+                    </Card>
+                )}
+                {stage === "success" && (
+                    <Card className="bg-kiosk-surface shadow-card border-0 p-12 text-center">
+                        <h2 className="text-3xl font-bold text-kiosk-header">{selectedLanguage === "ta" ? "வெற்றி!" : "Success!"}</h2>
+                        <p className="text-gray-700">{selectedLanguage === "ta" ? "உங்கள் விண்ணப்பம் சமர்ப்பிக்கப்பட்டது. விண்ணப்ப எண்: " + String(applicationCounter - 1).padStart(6, '0') : "Your application has been submitted. Application No: " + String(applicationCounter - 1).padStart(6, '0')}</p>
+                        <Button onClick={() => { setStage("data-collection"); setAgentState(INITIAL_AGENT_STATE); setSelectedScheme(null); setSchemeAnswers({}); }} className="mt-4 bg-blue-600 hover:bg-blue-700 text-white">Start New Application</Button>
+                    </Card>
+                )}
             </div>
-          </Card>
-        )}
-      </div>
-    </div>
-  );
+        </div>
+    );
 };
 
 export default Index;
