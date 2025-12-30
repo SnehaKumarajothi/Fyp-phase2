@@ -46,7 +46,7 @@ const INITIAL_AGENT_STATE: AgentState = {
     name: null, age: null, address: null, earning: null, community: null, situation: null,
 };
 
-const Index: React.FC = () => {
+const SchemeVoice: React.FC = () => {
     const isMobileDebug = useIsMobile();
     const [viewportWidth, setViewportWidth] = useState<number>(typeof window !== 'undefined' ? window.innerWidth : 0);
     React.useEffect(() => {
@@ -164,7 +164,6 @@ const Index: React.FC = () => {
             return updated;
         });
     };
-
     return (
         <div className="min-h-screen bg-gradient-surface">
             <header className="bg-kiosk-header text-white shadow-kiosk">
@@ -245,4 +244,4 @@ const Index: React.FC = () => {
     );
 };
 
-export default Index;
+export default SchemeVoice;
