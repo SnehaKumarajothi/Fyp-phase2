@@ -13,7 +13,9 @@ import { ApplicationForm } from "../components/ApplicationForm";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
-import { Mic, Settings, Volume2, ArrowLeft } from 'lucide-react';
+import { Input } from "../components/ui/input";
+import { Mic, Keyboard, Settings, Volume2, ArrowLeft } from 'lucide-react';
+import { getMatchingSchemes } from "@/data/schemeMatcher";
 
 // Mock/Type Definitions (To avoid internal import issues)
 type Language = "ta" | "en";
@@ -55,6 +57,8 @@ const SchemeVoice: React.FC = () => {
         return () => window.removeEventListener('resize', onResize);
     }, []);
     const { toast } = useToast();
+    const [inputMode, setInputMode] = useState<"voice" | "text">("voice");
+    const [textInput, setTextInput] = useState("");
     const [stage, setStage] = useState<AppStage>("data-collection");
     const [isListening, setIsListening] = useState(false);
     const [selectedLanguage, setSelectedLanguage] = useState<Language>("ta");
@@ -87,7 +91,7 @@ const SchemeVoice: React.FC = () => {
     }), [agentState]);
 
     const handleDataCollectionComplete = async (finalData: Record<string, string>) => {
-        toast({
+        /*toast({
             title: selectedLanguage === "ta" ? "சேகரிப்பு முடிந்தது..." : "Data Collection Complete...",
             description: selectedLanguage === "ta" ? "திட்டப் பொருத்தத்திற்காக தரவு அனுப்பப்படுகிறது." : "Sending data for scheme matching.",
             duration: 5000,
@@ -125,7 +129,23 @@ const SchemeVoice: React.FC = () => {
                 variant: 'destructive',
                 duration: 5000
             });
+        }*/
+       if (!finalData.situation || finalData.situation.trim().length < 5) {
+            console.error("Situation missing:", finalData);
+            return;
         }
+
+        const { situation, ...restUserData } = finalData;
+
+        const matchedSchemes = getMatchingSchemes(
+            restUserData,
+            situation
+        );
+
+        console.log("MATCHED SCHEMES:", matchedSchemes);
+
+        setRecommendedSchemes(matchedSchemes);
+        setStage("schemes");
     };
 
     const handleBack = () => {
@@ -145,7 +165,7 @@ const SchemeVoice: React.FC = () => {
         toast({ title: selectedLanguage === "ta" ? "குரல் விளக்கம்" : "Voice Description", description: text, duration: 2000 });
     };
 
-    const handleStepComplete = (stepKey: string, value: string) => {
+    /*const handleStepComplete = (stepKey: string, value: string) => {
         setAgentState(prev => {
             const updated = { ...prev, [stepKey]: value } as AgentState;
             const nextIdx = (prev.next_step_index || 0) + 1;
@@ -163,6 +183,50 @@ const SchemeVoice: React.FC = () => {
             }
             return updated;
         });
+    };*/
+    const handleTextSubmit = () => {
+    if (!textInput.trim()) return;
+
+    const stepKey = steps[agentState.next_step_index].key;
+    const currentStep = steps[agentState.next_step_index];
+
+    handleStepComplete(currentStep.key, textInput, "text");
+
+    setTextInput("");
+    };
+
+    type InputSource = "voice" | "text";
+
+    const handleStepComplete = (
+    stepKey: string,
+    value: string,
+    source: InputSource = "voice"
+    ) => {
+    setAgentState(prev => {
+        const updated = {
+        ...prev,
+        [stepKey]: value,
+        last_input_source: source, // optional but useful
+        } as AgentState;
+
+        const nextIdx = (prev.next_step_index || 0) + 1;
+        updated.next_step_index = nextIdx;
+
+        if (nextIdx >= steps.length) {
+        const finalData = {
+            name: String(updated.name || ""),
+            age: String(updated.age || ""),
+            address: String(updated.address || ""),
+            yearlyEarning: String(updated.earning || ""),
+            community: String(updated.community || ""),
+            situation: String(updated.situation || ""),
+        };
+
+        setTimeout(() => handleDataCollectionComplete(finalData), 0);
+        }
+
+        return updated;
+    });
     };
     return (
         <div className="min-h-screen bg-gradient-surface">
@@ -185,17 +249,12 @@ const SchemeVoice: React.FC = () => {
                     <div className="flex items-center gap-4">
                         <Badge variant="secondary" className="bg-white/20 text-white border-white/30">{selectedLanguage === "ta" ? "தமிழ்" : "English"}</Badge>
                         <LanguageSelector selectedLanguage={selectedLanguage} onLanguageChange={(lang: string) => { if (lang === "ta" || lang === "en") setSelectedLanguage(lang as Language); }} />
-                        {/* DEBUG: show whether hook detects mobile and viewport width */}
-                        <div className="ml-2 text-sm text-white/90 bg-white/10 px-2 py-1 rounded">
-                            <span className="font-mono">{isMobileDebug ? 'MOBILE' : 'DESKTOP'}</span>
-                            <span className="ml-2">W:{viewportWidth}px</span>
-                        </div>
                     </div>
                 </div>
             </header>
             <div className="mx-auto px-4 sm:px-6 lg:px-8 max-w-screen-xl">
                 {stage === "data-collection" && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-[calc(100vh-140px)]">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full-[calc(100vh-140px)]">
                         <div className="lg:col-span-1">
                             <Card className="h-full bg-kiosk-surface shadow-card border-0">
                                 <div className="p-6">
@@ -206,12 +265,77 @@ const SchemeVoice: React.FC = () => {
                         </div>
                         <div className="lg:col-span-2">
                             <Card className="h-full bg-kiosk-surface shadow-card border-0">
-                                <div className="p-6 sm:p-8 h-full flex flex-col">
+                                <div className="p-6 sm:p-8 flex flex-col flex-1">
+                                    {/* ✅ CURRENT QUESTION */}
+                                    {steps[agentState.next_step_index] && (
+                                        <p className="mb-4 text-xl font-semibold text-center text-kiosk-header">
+                                        {selectedLanguage === "ta"
+                                            ? steps[agentState.next_step_index].label
+                                            : steps[agentState.next_step_index].labelEn}
+                                        </p>
+                                    )}
                                     <div className="flex items-center justify-between mb-8">
                                         <h2 className="text-2xl font-semibold text-kiosk-header">{selectedLanguage === "ta" ? "குரல் உரையாடல்" : "Voice Interaction"}</h2>
                                         <div className="flex items-center gap-2"><Volume2 className="w-5 h-5 text-muted-foreground" /><Settings className="w-5 h-5 text-muted-foreground" /></div>
                                     </div>
-                                    <VoiceInterface isListening={isListening} onListeningChange={setIsListening} currentStep={agentState.next_step_index} onStepComplete={handleStepComplete} onDataCollectionComplete={handleDataCollectionComplete} language={selectedLanguage} steps={steps} transcript={currentTranscript} onTranscriptChange={setCurrentTranscript} />
+                                    <div className="mb-6 flex justify-center gap-2">
+                                        <Button
+                                            onClick={() => setInputMode("voice")}
+                                            variant={inputMode === "voice" ? "default" : "outline"}
+                                            className="gap-2"
+                                        >
+                                            <Mic className="w-4 h-4" />
+                                            {selectedLanguage === "ta" ? "குரல்" : "Voice"}
+                                        </Button>
+
+                                        <Button
+                                            onClick={() => setInputMode("text")}
+                                            variant={inputMode === "text" ? "default" : "outline"}
+                                            className="gap-2"
+                                        >
+                                            <Keyboard className="w-4 h-4" />
+                                            {selectedLanguage === "ta" ? "உரை" : "Text"}
+                                        </Button>
+                                        </div>
+                                    {inputMode === "voice" ? (
+                                    <VoiceInterface
+                                        isListening={isListening}
+                                        onListeningChange={setIsListening}
+                                        currentStep={agentState.next_step_index}
+                                        onStepComplete={handleStepComplete}
+                                        onDataCollectionComplete={handleDataCollectionComplete}
+                                        language={selectedLanguage}
+                                        steps={steps}
+                                        transcript={currentTranscript}
+                                        onTranscriptChange={setCurrentTranscript}
+                                    />
+                                    ) : (
+                                    <div className="flex-1 flex flex-col justify-center max-w-xl mx-auto">
+                                        <Card className="p-6 bg-muted/50">
+                                        <Input
+                                            value={textInput}
+                                            onChange={(e) => setTextInput(e.target.value)}
+                                            placeholder={
+                                            selectedLanguage === "ta"
+                                                ? "உங்கள் பதிலை இங்கே தட்டச்சு செய்யவும்..."
+                                                : "Type your answer here..."
+                                            }
+                                            className="text-lg"
+                                            onKeyDown={(e) => {
+                                            if (e.key === "Enter") handleTextSubmit();
+                                            }}
+                                        />
+
+                                        <Button
+                                            onClick={handleTextSubmit}
+                                            className="mt-4 w-full bg-success hover:bg-success/90"
+                                            disabled={!textInput.trim()}
+                                        >
+                                            {selectedLanguage === "ta" ? "சமர்ப்பிக்கவும்" : "Submit"}
+                                        </Button>
+                                        </Card>
+                                    </div>
+                                    )}
                                 </div>
                             </Card>
                         </div>
@@ -224,21 +348,86 @@ const SchemeVoice: React.FC = () => {
                 )}
                 {stage === "scheme-questions" && selectedScheme && (
                     <Card className="bg-kiosk-surface shadow-card border-0 p-8">
-                        <SchemeQuestions schemeName={selectedLanguage === "ta" ? selectedScheme.nameTa : selectedScheme.name} questions={selectedScheme.questions} language={selectedLanguage} onComplete={(answers: Record<string, string>) => { setSchemeAnswers(answers); setStage("application-form"); }} />
+                        <SchemeQuestions
+                        schemeName={
+                            selectedLanguage === "ta"
+                            ? selectedScheme.nameTa
+                            : selectedScheme.name
+                        }
+                        questions={selectedScheme.questions}
+                        language={selectedLanguage}
+                        onComplete={(answers: Record<string, string>) => {
+                            setSchemeAnswers(answers);
+                            setStage("application-form");
+                        }}
+                        />
                     </Card>
                 )}
                 {stage === "application-form" && selectedScheme && (
                     <Card className="bg-kiosk-surface shadow-card border-0 p-8">
-                        <ApplicationForm applicationNumber={applicationCounter} schemeName={selectedScheme.name} schemeNameTa={selectedScheme.nameTa} formKey={selectedScheme.formKey} formFields={{ ...userData, ...schemeAnswers }} language={selectedLanguage} onSubmit={() => { localStorage.setItem("applicationNumber", applicationCounter.toString()); setApplicationCounter(prev => prev + 1); setStage("success"); }} />
+                        <ApplicationForm
+                        applicationNumber={applicationCounter}
+                        schemeName={selectedScheme.name}
+                        schemeNameTa={selectedScheme.nameTa}
+                        formKey={selectedScheme.formKey}
+                        formFields={{
+                            ...userData,       // from agent
+                            ...schemeAnswers,  // from scheme questions
+                        }}
+                        language={selectedLanguage}
+                        onSubmit={() => {
+                            setApplicationCounter((prev) => prev + 1);
+
+                            toast({
+                            title: selectedLanguage === "ta" ? "வெற்றி!" : "Success!",
+                            description:
+                                selectedLanguage === "ta"
+                                ? "உங்கள் விண்ணப்பம் சமர்ப்பிக்கப்பட்டது"
+                                : "Your application has been submitted",
+                            });
+
+                            setStage("success");
+                        }}
+                        />
                     </Card>
                 )}
                 {stage === "success" && (
                     <Card className="bg-kiosk-surface shadow-card border-0 p-12 text-center">
-                        <h2 className="text-3xl font-bold text-kiosk-header">{selectedLanguage === "ta" ? "வெற்றி!" : "Success!"}</h2>
-                        <p className="text-gray-700">{selectedLanguage === "ta" ? "உங்கள் விண்ணப்பம் சமர்ப்பிக்கப்பட்டது. விண்ணப்ப எண்: " + String(applicationCounter - 1).padStart(6, '0') : "Your application has been submitted. Application No: " + String(applicationCounter - 1).padStart(6, '0')}</p>
-                        <Button onClick={() => { setStage("data-collection"); setAgentState(INITIAL_AGENT_STATE); setSelectedScheme(null); setSchemeAnswers({}); }} className="mt-4 bg-blue-600 hover:bg-blue-700 text-white">Start New Application</Button>
+                        <div className="max-w-2xl mx-auto space-y-6">
+                        <div className="w-20 h-20 bg-success/20 rounded-full flex items-center justify-center mx-auto">
+                            <Mic className="w-10 h-10 text-success" />
+                        </div>
+
+                        <h2 className="text-3xl font-bold text-kiosk-header">
+                            {selectedLanguage === "ta"
+                            ? "விண்ணப்பம் சமர்ப்பிக்கப்பட்டது!"
+                            : "Application Submitted!"}
+                        </h2>
+
+                        <p className="text-muted-foreground text-lg">
+                            {selectedLanguage === "ta"
+                            ? "உங்கள் விண்ணப்பம் வெற்றிகரமாக சமர்ப்பிக்கப்பட்டது. விரைவில் உங்களை தொடர்பு கொள்வோம்."
+                            : "Your application has been submitted successfully. We will contact you soon."}
+                        </p>
+
+                        <Button
+                            size="lg"
+                            className="mt-8"
+                            onClick={() => {
+                            setStage("data-collection");
+                            setAgentState(INITIAL_AGENT_STATE);
+                            setSelectedScheme(null);
+                            setSchemeAnswers({});
+                            setCurrentTranscript("");
+                            setInputMode("voice");
+                            }}
+                        >
+                            {selectedLanguage === "ta" ? "புதிய விண்ணப்பம்" : "New Application"}
+                        </Button>
+                        </div>
                     </Card>
                 )}
+                
             </div>
         </div>
     );

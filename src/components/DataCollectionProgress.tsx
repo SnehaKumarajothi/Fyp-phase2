@@ -196,9 +196,9 @@ export const DataCollectionProgress: React.FC<DataCollectionProgressProps> = ({
   const getStepIcon = (index: number, step: Step) => {
     const status = getStepStatus(index);
     switch (status) {
-      case "completed": return <Check className="w-4 h-4 text-green-600" />;
-      case "current": return <AlertCircle className="w-4 h-4 text-blue-600 animate-pulse" />;
-      default: return <Circle className="w-4 h-4 text-gray-400" />;
+      case "completed": return <Check className="w-4 h-4 text-success" />;
+      case "current": return <AlertCircle className="w-4 h-4 text-primary animate-pulse" />;
+      default: return <Circle className="w-4 h-4 text-muted-foreground" />;
     }
   };
 
@@ -208,18 +208,18 @@ export const DataCollectionProgress: React.FC<DataCollectionProgressProps> = ({
     <div className="space-y-4">
       {/* Progress Overview */}
       <div className="text-center">
-        <div className="text-3xl font-bold text-blue-600 mb-2">
+        <div className="text-3xl font-bold text-primary mb-2">
           {completedSteps}/{steps.length}
         </div>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-muted-foreground">
           {language === "ta" ? "பூர்த்தி செய்யப்பட்ட படிகள்" : "Steps Completed"}
         </p>
       </div>
 
       {/* Progress Bar */}
-      <div className="w-full bg-gray-200 rounded-full h-2">
+      <div className="w-full bg-muted rounded-full h-2">
         <div 
-          className="bg-blue-600 h-2 rounded-full transition-all duration-500"
+          className="bg-gradient-primary h-2 rounded-full transition-all duration-500"
           style={{ width: `${(completedSteps / steps.length) * 100}%` }}
         />
       </div>
@@ -235,40 +235,40 @@ export const DataCollectionProgress: React.FC<DataCollectionProgressProps> = ({
               key={step.key}
               className={cn(
                 "p-4 transition-all duration-300 border",
-                status === "current" && "border-blue-600 bg-blue-50 shadow-md",
-                status === "completed" && "border-green-500 bg-green-50/50",
-                status === "pending" && "border-gray-200 bg-white"
+                status === "current" && "border-primary bg-primary/5 shadow-kiosk",
+                status === "completed" && "border-success bg-success/5",
+                status === "pending" && "border-muted"
               )}
             >
               <div className="flex items-center gap-3">
                 <div className={cn(
                   "w-8 h-8 rounded-full flex items-center justify-center",
-                  status === "current" && "bg-blue-100",
-                  status === "completed" && "bg-green-100",
-                  status === "pending" && "bg-gray-100"
+                  status === "current" && "bg-primary/10",
+                  status === "completed" && "bg-success/10",
+                  status === "pending" && "bg-muted"
                 )}>
                   {getStepIcon(index, step)}
                 </div>
                 
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-sm text-gray-800">
+                    <span className="font-medium text-sm">
                       {language === "ta" ? step.label : step.labelEn}
                     </span>
                     {status === "completed" && (
-                      <Badge className="bg-green-100 text-green-700 text-xs">
+                      <Badge className="bg-success/20 text-success text-xs">
                         {language === "ta" ? "முடிந்தது" : "Done"}
                       </Badge>
                     )}
                     {status === "current" && (
-                      <Badge className="bg-blue-100 text-blue-700 text-xs animate-pulse">
+                      <Badge className="text-xs animate-pulse">
                         {language === "ta" ? "நடப்பு" : "Current"}
                       </Badge>
                     )}
                   </div>
                   
                   {hasData && (
-                    <p className="text-xs text-gray-500 mt-1 truncate">
+                    <p className="text-xs text-muted-foreground mt-1 truncate">
                       {userData[step.key]?.toString().substring(0, 30)}
                       {userData[step.key]?.toString().length > 30 ? "..." : ""}
                     </p>
@@ -279,6 +279,29 @@ export const DataCollectionProgress: React.FC<DataCollectionProgressProps> = ({
           );
         })}
       </div>
+      {/* Collected Data Summary */}
+      {Object.keys(userData).length > 0 && (
+        <Card className="p-4 bg-muted/30">
+          <h4 className="text-sm font-semibold mb-3 text-kiosk-header">
+            {language === "ta" ? "சேகரிக்கப்பட்ட தகவல்கள்" : "Collected Data"}
+          </h4>
+          <div className="space-y-2 text-xs">
+            {Object.entries(userData).map(([key, value]) => {
+              const step = steps.find(s => s.key === key);
+              return (
+                <div key={key} className="flex justify-between items-center">
+                  <span className="text-muted-foreground">
+                    {step ? (language === "ta" ? step.label : step.labelEn) : key}:
+                  </span>
+                  <span className="font-medium max-w-[120px] truncate">
+                    {value?.toString() || ""}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
     </div>
   );
 };
