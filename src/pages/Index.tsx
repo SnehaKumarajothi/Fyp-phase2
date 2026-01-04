@@ -16,7 +16,6 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Mic, Keyboard, Settings, Volume2, ArrowLeft } from 'lucide-react';
 import { getMatchingSchemes } from "@/data/schemeMatcher";
-
 // Mock/Type Definitions (To avoid internal import issues)
 type Language = "ta" | "en";
 type AppStage = "data-collection" | "schemes" | "scheme-questions" | "application-form" | "success";
@@ -67,7 +66,6 @@ const SchemeVoice: React.FC = () => {
     const [recommendedSchemes, setRecommendedSchemes] = useState<Scheme[]>([]);
     const [selectedScheme, setSelectedScheme] = useState<Scheme | null>(null);
     const [schemeAnswers, setSchemeAnswers] = useState<Record<string, string>>({});
-    
     const [applicationCounter, setApplicationCounter] = useState<number>(
         parseInt(localStorage.getItem("applicationNumber") || "0") + 1
     );
@@ -141,11 +139,18 @@ const SchemeVoice: React.FC = () => {
             restUserData,
             situation
         );
-
-        console.log("MATCHED SCHEMES:", matchedSchemes);
-
         setRecommendedSchemes(matchedSchemes);
+        /*setUser({
+            name:restUserData.name,
+            age:restUserData.age,
+            location:restUserData.address,
+            income: restUserData.earning,
+            category:restUserData.community,
+            language: selectedLanguage,
+        });
+        setRecommendedScheme(matchedSchemes);*/
         setStage("schemes");
+        console.log("MATCHED SCHEMES:", matchedSchemes);
     };
 
     const handleBack = () => {
@@ -233,6 +238,7 @@ const SchemeVoice: React.FC = () => {
             <header className="bg-kiosk-header text-white shadow-kiosk">
                 <div className="max-w-screen-xl mx-auto flex items-center justify-between px-4 sm:px-6 lg:px-8 py-4">
                     <div className="flex items-center gap-4">
+                        <Button onClick={() => window.location.href="/"}>Home</Button>
                         {stage !== "data-collection" && (
                             <Button variant="ghost" size="icon" onClick={handleBack} className="text-white hover:bg-white/20">
                                 <ArrowLeft className="w-6 h-6" />
@@ -254,7 +260,7 @@ const SchemeVoice: React.FC = () => {
             </header>
             <div className="mx-auto px-4 sm:px-6 lg:px-8 max-w-screen-xl">
                 {stage === "data-collection" && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full-[calc(100vh-140px)]">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-140px)]">
                         <div className="lg:col-span-1">
                             <Card className="h-full bg-kiosk-surface shadow-card border-0">
                                 <div className="p-6">
