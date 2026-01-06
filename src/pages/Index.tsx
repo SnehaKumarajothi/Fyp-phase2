@@ -30,7 +30,7 @@ interface AgentState {
 interface Scheme {
     id: string; name: string; nameTa: string; description: string; descriptionTa: string;
     eligibility: string[]; maxAmount: string; interestRate: string; keywords: string[];
-    formKey: string; questions: Step[];
+    formKey: string; questions: Step[]; fullText?: string;
 }
 
 const useToast = () => ({
@@ -349,7 +349,7 @@ const SchemeVoice: React.FC = () => {
                 )}
                 {stage === "schemes" && (
                     <Card className="bg-kiosk-surface shadow-card border-0 p-8">
-                        <SchemeRecommendations schemes={recommendedSchemes} language={selectedLanguage} onSelectScheme={(scheme: any) => { setSelectedScheme(scheme); setStage("scheme-questions"); }} onVoiceDescription={handleVoiceDescription} />
+                        <SchemeRecommendations schemes={recommendedSchemes} language={selectedLanguage} onSelectScheme={(scheme: any) => { setSelectedScheme(scheme); setStage("scheme-questions"); }} />
                     </Card>
                 )}
                 {stage === "scheme-questions" && selectedScheme && (

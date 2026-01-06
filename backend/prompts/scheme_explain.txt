@@ -7,9 +7,9 @@ Rules:
 - More understanding less jargon
 - Explain like talking to a village family
 - Do NOT add information not in the context
-
+Language:{{language}}
 Context:
 {{context}}
 
 Task:
-Explain this scheme clearly in simple words.
+Explain this scheme clearly along with benefits and rules in simple words.

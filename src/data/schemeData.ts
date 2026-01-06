@@ -27,7 +27,7 @@ export const schemes = [
   },
   // Add more schemes here later...
   {
-    id: "kcc-farmer",
+    id: "kisan_credit_card",
     name: "KCC Farmer Finance Scheme",
     nameTa: "விவசாயி நிதி திட்டம் (KCC)",
     description: "Financial support for farmers under the Kisan Credit Card program.",
@@ -83,7 +83,7 @@ export const schemes = [
     ]
   },
   {
-    id: "commercial-card",
+    id: "pmfby",
     name: "Commercial Card Scheme",
     nameTa: "வணிக அட்டை திட்டம்",
     description: "Credit card for business owners to manage transactions.",
