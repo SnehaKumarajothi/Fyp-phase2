@@ -241,7 +241,7 @@ export default function Banking() {
         : "Banking Awareness",
     modes: {
         bank: language === "ta" ? "வங்கி" : "Bank",
-        education: language === "ta" ? "விளக்கம்" : "Info",
+        education: language === "ta" ? "விளக்கம்" : "Information",
         },
 
     bank: {

@@ -260,10 +260,10 @@ const SchemeVoice: React.FC = () => {
             </header>
             <div className="mx-auto px-4 sm:px-6 lg:px-8 max-w-screen-xl">
                 {stage === "data-collection" && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-140px)]">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <div className="lg:col-span-1">
                             <Card className="h-full bg-kiosk-surface shadow-card border-0">
-                                <div className="p-6">
+                                <div className="py-4 px-6">
                                     <h2 className="text-xl font-semibold mb-6 text-kiosk-header">{selectedLanguage === "ta" ? "முன்னேற்றம்" : "Progress"}</h2>
                                     <DataCollectionProgress steps={steps} currentStep={agentState.next_step_index} userData={userData} language={selectedLanguage} />
                                 </div>
@@ -271,7 +271,7 @@ const SchemeVoice: React.FC = () => {
                         </div>
                         <div className="lg:col-span-2">
                             <Card className="h-full bg-kiosk-surface shadow-card border-0">
-                                <div className="p-6 sm:p-8 flex flex-col flex-1">
+                                <div className="py-4 px-6 sm:p-8 flex flex-col flex-1">
                                     {/* ✅ CURRENT QUESTION */}
                                     {steps[agentState.next_step_index] && (
                                         <p className="mb-4 text-xl font-semibold text-center text-kiosk-header">
@@ -317,7 +317,7 @@ const SchemeVoice: React.FC = () => {
                                     />
                                     ) : (
                                     <div className="flex-1 flex flex-col justify-center max-w-xl mx-auto">
-                                        <Card className="p-6 bg-muted/50">
+                                        <Card className="p-4 bg-muted/50">
                                         <Input
                                             value={textInput}
                                             onChange={(e) => setTextInput(e.target.value)}
@@ -349,26 +349,27 @@ const SchemeVoice: React.FC = () => {
                 )}
                 {stage === "schemes" && (
                     <Card className="bg-kiosk-surface shadow-card border-0 p-8">
-                        <SchemeRecommendations schemes={recommendedSchemes} language={selectedLanguage} onSelectScheme={(scheme: any) => { setSelectedScheme(scheme); setStage("scheme-questions"); }} />
+                        <SchemeRecommendations schemes={recommendedSchemes} language={selectedLanguage} onSelectScheme={(scheme: any) => { setSelectedScheme(scheme); setTimeout(() => setStage("scheme-questions"), 0); }} />
                     </Card>
                 )}
-                {stage === "scheme-questions" && selectedScheme && (
-                    <Card className="bg-kiosk-surface shadow-card border-0 p-8">
+                {stage === "scheme-questions" && (
+                    selectedScheme ? (
                         <SchemeQuestions
-                        schemeName={
-                            selectedLanguage === "ta"
-                            ? selectedScheme.nameTa
-                            : selectedScheme.name
-                        }
+                        schemeName={selectedLanguage === "ta" ? selectedScheme.nameTa : selectedScheme.name}
                         questions={selectedScheme.questions}
                         language={selectedLanguage}
-                        onComplete={(answers: Record<string, string>) => {
+                        onComplete={(answers) => {
                             setSchemeAnswers(answers);
                             setStage("application-form");
                         }}
                         />
-                    </Card>
+                    ) : (
+                        <div className="text-center text-muted-foreground">
+                        Loading scheme questions…
+                        </div>
+                    )
                 )}
+
                 {stage === "application-form" && selectedScheme && (
                     <Card className="bg-kiosk-surface shadow-card border-0 p-8">
                         <ApplicationForm

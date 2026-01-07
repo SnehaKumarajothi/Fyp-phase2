@@ -330,12 +330,12 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
 
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 print:block">
+    <div className="max-w-4xl mx-auto space-y-3">
       {/* Header Card */}
       <Card className="p-8 bg-blue-800 text-white print:bg-white print:text-black">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold mb-2">
+            <h2 className="text-xl font-semibold mb-1">
               {language === "ta" ? schemeNameTa : schemeName}
             </h2>
             <p className="text-white/90 print:text-gray-600">
@@ -346,7 +346,7 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
             <div className="text-sm text-white/80 print:text-gray-600">
               {language === "ta" ? "விண்ணப்ப எண்" : "Application No."}
             </div>
-            <Badge className="text-lg font-bold bg-white text-blue-800">
+            <Badge className="text-base font-bold bg-white text-blue-800">
               {formattedAppNumber}
             </Badge>
           </div>
@@ -367,8 +367,8 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
 
           {selectedForm.map((section: FormSection, sectionIndex: number) => (
             <div key={section.section}>
-              <h3 className="text-lg font-semibold mb-4 text-gray-700">{section.section}</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <h3 className="text-base font-semibold mb-4 text-gray-700">{section.section}</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {section.fields.map((field: FormField, fieldIndex: number) => (
                   <div key={field.key}>
                     <Label className="text-sm font-medium mb-2 block">
@@ -377,7 +377,7 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
                     <Input
                       value={formFields[field.key] || "N/A"}
                       readOnly={!field.editable}
-                      className="text-lg bg-gray-50 read-only:bg-gray-100"
+                      className="text-base bg-gray-50 read-only:bg-gray-100"
                     />
                   </div>
                 ))}
@@ -396,7 +396,7 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
               placeholder={
                 language === "ta" ? "உங்கள் கணக்கு எண்ணை உள்ளிடவும்" : "Enter your account number"
               }
-              className="text-lg border-red-500"
+              className="text-base border-red-500"
             />
           </div>
 

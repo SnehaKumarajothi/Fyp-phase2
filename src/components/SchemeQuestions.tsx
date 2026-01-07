@@ -54,6 +54,8 @@ export const SchemeQuestions: React.FC<SchemeQuestionsProps> = ({
         </div>
     );
 };*/
+
+/* working  version */
 import { useState } from "react";
 import VoiceInterface  from "./VoiceInterface";
 type Language = "ta"|"en";
@@ -79,7 +81,17 @@ export const SchemeQuestions = ({
   const [currentStep, setCurrentStep] = useState(0);
   const [isListening, setIsListening] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [textAnswer,setTextAnswer]=useState("");
   const [transcript, setTranscript] = useState("");
+
+  const submitTextAnswer = ()=>{
+    if (!textAnswer.trim()) return;
+    handleStepComplete(
+      questions[currentStep].key,
+      textAnswer.trim()
+    );
+    setTextAnswer("");
+  };
 
   const handleStepComplete = (key: string, data: string) => {
     const newAnswers = { ...answers, [key]: data };
@@ -91,6 +103,11 @@ export const SchemeQuestions = ({
       onComplete(newAnswers);
     }
   };
+  const currentQuestion =
+  language === "ta"
+    ? questions[currentStep]?.label
+    : questions[currentStep]?.labelEn;
+
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -100,6 +117,11 @@ export const SchemeQuestions = ({
         </h2>
         <p className="text-muted-foreground">
           {schemeName}
+        </p>
+      </div>
+      <div className="mb-6 text-center">
+        <p className="text-xl font-semibold text-kiosk-header">
+          {currentQuestion}
         </p>
       </div>
 
@@ -113,6 +135,147 @@ export const SchemeQuestions = ({
         transcript={transcript}
         onTranscriptChange={setTranscript}
       />
+      <div className="mt-6 p-4 border rounded-lg bg-gray-50">
+        <p className="text-sm font-medium mb-2">
+          {language==="ta"
+          ? "அல்லது இங்கே எழுதுங்கள்"
+          : "Or type your answer here"}
+        </p>
+        <textarea
+          className="w-full border rounded p-2 text-sm"
+          rows={2}
+          value={textAnswer}
+          onChange={(e)=>setTextAnswer(e.target.value)}
+          placeholder={
+            language==="ta"
+            ? "உங்கள் பதிலை இங்கே உள்ளிடவும்..."
+            : "Enter your answer here..."
+          }
+        />
+        <button
+          onClick={submitTextAnswer}
+          className="mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        >
+          {language==="ta" ? "பதில்களை சமர்ப்பிக்கவும்" : "Submit Answer"}
+        </button>
+      </div>
     </div>
   );
 };
+
+/*IDEAL VERSION
+import { useState } from "react";
+import VoiceInterface from "./VoiceInterface";
+
+type Language = "ta" | "en";
+
+interface Question {
+  key: string;
+  label: string;
+  labelEn: string;
+}
+
+interface SchemeQuestionsProps {
+  schemeName: string;
+  questions: Question[];
+  language: Language;
+  onComplete: (answers: Record<string, string>) => void;
+}
+
+export const SchemeQuestions = ({
+  schemeName,
+  questions,
+  language,
+  onComplete,
+}: SchemeQuestionsProps) => {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [textAnswer, setTextAnswer] = useState("");
+  const [isListening, setIsListening] = useState(false);
+  const [transcript, setTranscript] = useState("");
+
+  const currentQuestion =
+    language === "ta"
+      ? questions[currentStep]?.label
+      : questions[currentStep]?.labelEn;
+
+  const handleStepComplete = (key: string, value: string) => {
+    const updated = { ...answers, [key]: value };
+    setAnswers(updated);
+
+    if (currentStep < questions.length - 1) {
+      setCurrentStep((prev) => prev + 1);
+      setTranscript("");
+    } else {
+      onComplete(updated);
+    }
+  };
+
+  const submitTextAnswer = () => {
+    if (!textAnswer.trim()) return;
+    handleStepComplete(questions[currentStep].key, textAnswer.trim());
+    setTextAnswer("");
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-6">
+      {/* HEADER *//*}
+      <div className="text-center">
+        <h2 className="text-2xl font-bold text-kiosk-header">
+          {language === "ta" ? "கூடுதல் தகவல் தேவை" : "Additional Information Required"}
+        </h2>
+        <p className="text-muted-foreground mt-1">{schemeName}</p>
+      </div>
+
+      {/* QUESTION CARD *//*}
+      <div className="rounded-xl border bg-blue-50 p-6 text-center shadow-sm">
+        <p className="text-sm text-blue-600 mb-2">
+          {language === "ta" ? "கேள்வி" : "Question"}
+        </p>
+        <p className="text-xl font-semibold text-kiosk-header">
+          {currentQuestion}
+        </p>
+      </div>
+
+      {/* VOICE INPUT *//*/*}
+      <div className="rounded-xl border p-6">
+        <VoiceInterface
+          isListening={isListening}
+          onListeningChange={setIsListening}
+          onStepComplete={(value: string) =>
+            handleStepComplete(questions[currentStep].key, value)
+          }
+          language={language}
+          transcript={transcript}
+          onTranscriptChange={setTranscript}
+        />
+      </div>
+
+      {/* TEXT INPUT *//*}
+      <div className="rounded-xl border bg-gray-50 p-4">
+        <p className="text-sm font-medium mb-2">
+          {language === "ta" ? "அல்லது இங்கே எழுதுங்கள்" : "Or type your answer"}
+        </p>
+
+        <textarea
+          className="w-full border rounded p-2 text-sm"
+          rows={2}
+          value={textAnswer}
+          onChange={(e) => setTextAnswer(e.target.value)}
+          placeholder={
+            language === "ta"
+              ? "உங்கள் பதிலை இங்கே உள்ளிடவும்..."
+              : "Enter your answer here..."
+          }
+        />
+
+        <button
+          onClick={submitTextAnswer}
+          className="mt-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        >
+          {language === "ta" ? "பதில் சமர்ப்பிக்கவும்" : "Submit Answer"}
+        </button>
+      </div>
+    </div>
+  );
+};*/

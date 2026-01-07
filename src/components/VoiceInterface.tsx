@@ -22,6 +22,24 @@ interface VoiceInterfaceProps {
     transcript: string;
     onTranscriptChange: Dispatch<SetStateAction<string>>;
 }
+/*interface VoiceInterfaceProps {
+  isListening: boolean;
+  onListeningChange: (listening: boolean) => void;
+
+  // 🔹 Optional for scheme questions
+  onStepComplete?: (fieldKey: string, value: string) => void;
+
+  // 🔹 Optional for data collection flow
+  currentStep?: number;
+  steps?: { key: string; label: string; labelEn: string }[];
+  onDataCollectionComplete?: (data: Record<string, string>) => void;
+
+  language: "ta" | "en";
+
+  transcript: string;
+  onTranscriptChange: (text: string) => void;
+}*/
+
 // --- End Type Definitions ---
 
 

@@ -205,7 +205,7 @@ export const DataCollectionProgress: React.FC<DataCollectionProgressProps> = ({
   const completedSteps = Object.values(userData).filter(v => v).length;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       {/* Progress Overview */}
       <div className="text-center">
         <div className="text-3xl font-bold text-primary mb-2">
@@ -225,7 +225,7 @@ export const DataCollectionProgress: React.FC<DataCollectionProgressProps> = ({
       </div>
 
       {/* Steps List */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         {steps.map((step: Step, index: number) => {
           const status = getStepStatus(index);
           const hasData = userData[step.key];
@@ -234,7 +234,7 @@ export const DataCollectionProgress: React.FC<DataCollectionProgressProps> = ({
             <Card 
               key={step.key}
               className={cn(
-                "p-4 transition-all duration-300 border",
+                "p-3 transition-all duration-300 border",
                 status === "current" && "border-primary bg-primary/5 shadow-kiosk",
                 status === "completed" && "border-success bg-success/5",
                 status === "pending" && "border-muted"
