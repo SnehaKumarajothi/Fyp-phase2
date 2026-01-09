@@ -330,12 +330,12 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
 
 
   return (
-    <div className="max-w-4xl mx-auto space-y-3">
+    <div className="max-w-4xl mx-auto space-y-2">
       {/* Header Card */}
-      <Card className="p-8 bg-blue-800 text-white print:bg-white print:text-black">
+      <Card className="px-6 py-4 bg-blue-800 text-white print:bg-white print:text-black">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold mb-1">
+            <h2 className="text-lg font-semibold mb-0.5">
               {language === "ta" ? schemeNameTa : schemeName}
             </h2>
             <p className="text-white/90 print:text-gray-600">
@@ -354,8 +354,8 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
       </Card>
 
       {/* Form Sections */}
-      <Card className="p-8">
-        <div className="space-y-6">
+      <Card className="p-6">
+        <div className="space-y-4">
           <div className="flex items-center gap-2 mb-6">
             <CheckCircle2 className="w-6 h-6 text-green-600" />
             <h3 className="text-xl font-semibold text-gray-800">
@@ -366,9 +366,9 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
           </div>
 
           {selectedForm.map((section: FormSection, sectionIndex: number) => (
-            <div key={section.section}>
-              <h3 className="text-base font-semibold mb-4 text-gray-700">{section.section}</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div key={section.section} className="rounded-lg border border-gray-200 p-4 bg-gray-50">
+              <h3 className="text-sm font-semibold mb-3 text-gray-700 uppercase tracking-wide">{section.section}</h3>
+              <div className="rounded-lg border border-gray-200 p-4 bg-gray-50">
                 {section.fields.map((field: FormField, fieldIndex: number) => (
                   <div key={field.key}>
                     <Label className="text-sm font-medium mb-2 block">
@@ -387,7 +387,7 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
 
           {/* Bank Account Input */}
           <div>
-            <Label className="text-sm font-medium mb-2 block text-red-600">
+            <Label className="text-xs font-medium mb-1 block text-gray-600">
               {language === "ta" ? "வங்கி கணக்கு எண் *" : "Bank Account Number *"}
             </Label>
             <Input
@@ -396,12 +396,12 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
               placeholder={
                 language === "ta" ? "உங்கள் கணக்கு எண்ணை உள்ளிடவும்" : "Enter your account number"
               }
-              className="text-base border-red-500"
+              className="text-base border-red-500 h-10"
             />
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-4 mt-8 print:hidden">
+          <div className="flex gap-3 mt-6 print:hidden">
             <Button onClick={handlePrint} variant="outline" className="flex-1" size="lg">
               <Printer className="w-4 h-4 mr-2" />{language === "ta" ? "அச்சிடுக" : "Print"}
             </Button>
@@ -414,7 +414,7 @@ export const ApplicationForm: React.FC<ApplicationFormProps> = ({
               className="flex-1 bg-green-600 hover:bg-green-700 text-white"
               size="lg"
             >
-              <CheckCircle2 className="w-4 h-4 mr-2" />{language === "ta" ? "சமர்ப்பிக்கவும்" : "Submit Application"}
+              <CheckCircle2 className="w-1 h-3 mr-1" />{language === "ta" ? "சமர்ப்பிக்கவும்" : "Submit Application"}
             </Button>
           </div>
         </div>

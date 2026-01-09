@@ -207,17 +207,18 @@ export const DataCollectionProgress: React.FC<DataCollectionProgressProps> = ({
   return (
     <div className="space-y-2">
       {/* Progress Overview */}
-      <div className="text-center">
-        <div className="text-3xl font-bold text-primary mb-2">
-          {completedSteps}/{steps.length}
-        </div>
-        <p className="text-sm text-muted-foreground">
-          {language === "ta" ? "பூர்த்தி செய்யப்பட்ட படிகள்" : "Steps Completed"}
-        </p>
-      </div>
+      <div className="text-center space-y-0.5">
+        <div className="text-xl font-semibold leading-tight text-primary">
+          {completedSteps}/{steps.length}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {language === "ta" ? "முடிந்தது" : "Completed"}
+        </p>
+      </div>
+
 
       {/* Progress Bar */}
-      <div className="w-full bg-muted rounded-full h-2">
+      <div className="w-full bg-muted rounded-full h-1.5">
         <div 
           className="bg-gradient-primary h-2 rounded-full transition-all duration-500"
           style={{ width: `${(completedSteps / steps.length) * 100}%` }}
@@ -231,18 +232,17 @@ export const DataCollectionProgress: React.FC<DataCollectionProgressProps> = ({
           const hasData = userData[step.key];
           
           return (
-            <Card 
-              key={step.key}
-              className={cn(
-                "p-3 transition-all duration-300 border",
-                status === "current" && "border-primary bg-primary/5 shadow-kiosk",
-                status === "completed" && "border-success bg-success/5",
-                status === "pending" && "border-muted"
-              )}
-            >
+            <div
+              className={cn(
+                "flex items-center gap-3 px-2 py-2 rounded-md transition-colors",
+                status === "current" && "bg-primary/5",
+                status === "completed" && "bg-success/5",
+                status === "pending" && "bg-transparent"
+              )}
+            >
               <div className="flex items-center gap-3">
                 <div className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center",
+                  "w-6 h-6 rounded-full flex items-center justify-center",
                   status === "current" && "bg-primary/10",
                   status === "completed" && "bg-success/10",
                   status === "pending" && "bg-muted"
@@ -256,12 +256,12 @@ export const DataCollectionProgress: React.FC<DataCollectionProgressProps> = ({
                       {language === "ta" ? step.label : step.labelEn}
                     </span>
                     {status === "completed" && (
-                      <Badge className="bg-success/20 text-success text-xs">
+                      <Badge className="bg-success/20 text-success text-[10px]">
                         {language === "ta" ? "முடிந்தது" : "Done"}
                       </Badge>
                     )}
                     {status === "current" && (
-                      <Badge className="text-xs animate-pulse">
+                      <Badge className="text-[10px] animate-pulse">
                         {language === "ta" ? "நடப்பு" : "Current"}
                       </Badge>
                     )}
@@ -275,7 +275,7 @@ export const DataCollectionProgress: React.FC<DataCollectionProgressProps> = ({
                   )}
                 </div>
               </div>
-            </Card>
+            </div>
           );
         })}
       </div>
@@ -285,7 +285,7 @@ export const DataCollectionProgress: React.FC<DataCollectionProgressProps> = ({
           <h4 className="text-sm font-semibold mb-3 text-kiosk-header">
             {language === "ta" ? "சேகரிக்கப்பட்ட தகவல்கள்" : "Collected Data"}
           </h4>
-          <div className="space-y-2 text-xs">
+          <div className="space-y-1.5 text-xs">
             {Object.entries(userData).map(([key, value]) => {
               const step = steps.find(s => s.key === key);
               return (
