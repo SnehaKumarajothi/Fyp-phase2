@@ -21,6 +21,7 @@ interface VoiceInterfaceProps {
     steps: Step[];
     transcript: string;
     onTranscriptChange: Dispatch<SetStateAction<string>>;
+    collectedData?: Record<string, string>;
 }
 /*interface VoiceInterfaceProps {
   isListening: boolean;
@@ -55,6 +56,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
     steps,
     transcript,
     onTranscriptChange,
+    collectedData = {},
 }) => {
     const [audioURL, setAudioURL] = useState<string | null>(null);
     const [agentText, setAgentText] = useState("சேவை தொடங்குகிறது...");
@@ -81,11 +83,24 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
         }
     }, [audioURL]);
 
+    // Check if we're in scheme question mode (questions don't match standard data collection fields)
+    const standardFields = ["name", "age", "address", "earning", "community", "situation"];
+    const isSchemeQuestionMode = steps.length > 0 && !steps.some(step => standardFields.includes(step.key));
+
     // Initial load and sequential question logic
-    // Initial load: fetch first agent prompt (optional)
+    // Initial load: fetch first agent prompt (optional) - only for data collection, not scheme questions
     useEffect(() => {
         const loadInitialState = async () => {
-            // Only fetch initial agent prompt when on first step
+            // For scheme questions, just set the first question text
+            if (isSchemeQuestionMode) {
+                if (currentStepIndex === 0 && steps.length > 0) {
+                    const firstQuestion = language === 'ta' ? steps[0]?.label : steps[0]?.labelEn;
+                    setAgentText(firstQuestion || "");
+                }
+                return;
+            }
+            
+            // Only fetch initial agent prompt when on first step (data collection mode)
             if (currentStepIndex > 0) return;
             try {
                 setLoading(true);
@@ -104,7 +119,17 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
             }
         };
         loadInitialState();
-    }, [language, currentStepIndex]);
+    }, [language, currentStepIndex, isSchemeQuestionMode, steps]);
+
+    // Update agent text when step changes in scheme question mode
+    useEffect(() => {
+        if (isSchemeQuestionMode && steps[currentStepIndex]) {
+            const questionText = language === 'ta' ? steps[currentStepIndex]?.label : steps[currentStepIndex]?.labelEn;
+            if (questionText) {
+                setAgentText(questionText);
+            }
+        }
+    }, [currentStepIndex, isSchemeQuestionMode, language, steps]);
 
 
     // WAV encoding helper (PCM 16-bit mono, 16kHz)
@@ -174,44 +199,101 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
                 setAgentText(language === 'ta' ? "WAV கோப்பு உருவாக்கப்படவில்லை." : "WAV file not created.");
                 return;
             }
-            const formData = new FormData();
-            formData.append("file", wavBlob, "user_input.wav");
-            formData.append("language", language);
-            formData.append("step_index", String(currentStepIndex));
-            formData.append("field_key", steps[currentStepIndex]?.key || "");
 
-            const res = await fetch(`${API_BASE_URL}/agent_step`, { method: "POST", body: formData });
-            if (!res.ok) {
-                setAgentText(language === 'ta' ? "சேவையக பிழை. மீண்டும் முயற்சிக்கவும்." : `Server error (${res.status}). Please try again.`);
-                return;
-            }
-            const data = await res.json();
-            if (data.user_transcript_en) onTranscriptChange(data.user_transcript_en);
-            if (data.agent_text) setAgentText(data.agent_text);
-            if (data.audio_url) setAudioURL(data.audio_url);
-
-            if (data.value_extracted && data.value_extracted !== 'Not Found' && data.field_key) {
-                try {
-                    onStepComplete(data.field_key, String(data.value_extracted));
-                    // Play next agent prompt if available
-                    if (data.agent_text) {
-                        setTimeout(() => {
-                            setAgentText(data.agent_text);
-                            if (data.audio_url) {
-                                setAudioURL(data.audio_url);
-                            }
-                        }, 500);
-                    }
-                } catch (e) {
-                    console.warn('onStepComplete handler failed:', e);
+            // For scheme questions, use extraction and validation
+            if (isSchemeQuestionMode) {
+                const formData = new FormData();
+                formData.append("file", wavBlob, "user_input.wav");
+                formData.append("language", language);
+                const currentQuestion = steps[currentStepIndex];
+                formData.append("field_key", currentQuestion?.key || "");
+                formData.append("field_label", language === 'ta' ? currentQuestion?.label : currentQuestion?.labelEn || "");
+                
+                // Use /extract_scheme_field endpoint for extraction and validation
+                const res = await fetch(`${API_BASE_URL}/extract_scheme_field`, { method: "POST", body: formData });
+                if (!res.ok) {
+                    setAgentText(language === 'ta' ? "சேவையக பிழை. மீண்டும் முயற்சிக்கவும்." : `Server error (${res.status}). Please try again.`);
+                    return;
                 }
-            } else if (data.value_extracted === 'Not Found') {
-                setAgentText(language === 'ta' ? "மீண்டும் முயற்சிக்கவும்." : "Please try again.");
-            }
+                const data = await res.json();
+                
+                if (data.transcript) {
+                    onTranscriptChange(data.transcript);
+                }
+                
+                if (data.is_valid && data.extracted && data.extracted !== 'Not Found') {
+                    // Valid extraction - move to next question
+                    const currentQuestionKey = steps[currentStepIndex]?.key;
+                    if (currentQuestionKey) {
+                        onStepComplete(currentQuestionKey, data.extracted);
+                        // Set next question text
+                        const nextStepIndex = currentStepIndex + 1;
+                        if (nextStepIndex < steps.length) {
+                            const nextQuestion = language === 'ta' 
+                                ? steps[nextStepIndex]?.label 
+                                : steps[nextStepIndex]?.labelEn;
+                            setAgentText(nextQuestion || "");
+                        } else {
+                            // All questions completed
+                            setAgentText(language === 'ta' ? "அனைத்து கேள்விகளும் முடிந்தது!" : "All questions completed!");
+                        }
+                    }
+                } else {
+                    // Invalid extraction - ask again with the same question
+                    const currentQuestion = language === 'ta' 
+                        ? steps[currentStepIndex]?.label 
+                        : steps[currentStepIndex]?.labelEn;
+                    const errorMsg = data.agent_text || (language === 'ta' ? "மீண்டும் முயற்சிக்கவும்." : "Please try again.");
+                    // Show the question again with error message
+                    setAgentText(currentQuestion ? `${currentQuestion} (${errorMsg})` : errorMsg);
+                }
+            } else {
+                // Original data collection flow
+                const formData = new FormData();
+                formData.append("file", wavBlob, "user_input.wav");
+                formData.append("language", language);
+                formData.append("step_index", String(currentStepIndex));
+                formData.append("field_key", steps[currentStepIndex]?.key || "");
+                // Send collected data as JSON string for stateless backend
+                formData.append("collected", JSON.stringify(collectedData));
 
-            if (data.done) {
-                if (typeof onDataCollectionComplete === 'function') {
-                    onDataCollectionComplete(data.final_state || {});
+                const res = await fetch(`${API_BASE_URL}/agent_step`, { method: "POST", body: formData });
+                if (!res.ok) {
+                    setAgentText(language === 'ta' ? "சேவையக பிழை. மீண்டும் முயற்சிக்கவும்." : `Server error (${res.status}). Please try again.`);
+                    return;
+                }
+                const data = await res.json();
+                if (data.user_transcript_en) onTranscriptChange(data.user_transcript_en);
+                if (data.agent_text) setAgentText(data.agent_text);
+                if (data.audio_url) setAudioURL(data.audio_url);
+
+                // Handle extracted values from the response
+                if (data.values_extracted && Object.keys(data.values_extracted).length > 0) {
+                    // Update all extracted values
+                    Object.entries(data.values_extracted).forEach(([key, value]) => {
+                        if (value && value !== 'Not Found') {
+                            try {
+                                onStepComplete(key, String(value));
+                            } catch (e) {
+                                console.warn(`onStepComplete handler failed for ${key}:`, e);
+                            }
+                        }
+                    });
+                } else if (data.value_extracted && data.value_extracted !== 'Not Found' && data.field_key) {
+                    // Fallback to single value extraction (for backward compatibility)
+                    try {
+                        onStepComplete(data.field_key, String(data.value_extracted));
+                    } catch (e) {
+                        console.warn('onStepComplete handler failed:', e);
+                    }
+                } else if (data.value_extracted === 'Not Found' || (data.values_extracted && Object.keys(data.values_extracted).length === 0)) {
+                    setAgentText(language === 'ta' ? "மீண்டும் முயற்சிக்கவும்." : "Please try again.");
+                }
+
+                if (data.done) {
+                    if (typeof onDataCollectionComplete === 'function') {
+                        onDataCollectionComplete(data.final_state || {});
+                    }
                 }
             }
         } catch (err) {
@@ -226,7 +308,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
         if (loading) return;
         try {
             onListeningChange(true);
-            setTimer(20);
+            setTimer(5);
             setTimerActive(true);
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             // Try webm/opus, fallback to default if not supported

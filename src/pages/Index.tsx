@@ -134,23 +134,28 @@ const SchemeVoice: React.FC = () => {
         }
 
         const { situation, ...restUserData } = finalData;
+        
+        // Normalize the data structure - ensure age is a number, community is lowercase
+        const normalizedUserData = {
+            ...restUserData,
+            age: String(restUserData.age || ""),
+            community: (restUserData.community || "").toLowerCase(),
+        };
+        
+        console.log("[DATA COLLECTION COMPLETE] Final data:", finalData);
+        console.log("[DATA COLLECTION COMPLETE] Normalized user data:", normalizedUserData);
+        console.log("[DATA COLLECTION COMPLETE] Situation:", situation);
 
         const matchedSchemes = getMatchingSchemes(
-            restUserData,
+            normalizedUserData,
             situation
         );
+        
+        console.log("[DATA COLLECTION COMPLETE] Matched schemes count:", matchedSchemes.length);
+        console.log("[DATA COLLECTION COMPLETE] Matched schemes:", matchedSchemes);
+        
         setRecommendedSchemes(matchedSchemes);
-        /*setUser({
-            name:restUserData.name,
-            age:restUserData.age,
-            location:restUserData.address,
-            income: restUserData.earning,
-            category:restUserData.community,
-            language: selectedLanguage,
-        });
-        setRecommendedScheme(matchedSchemes);*/
         setStage("schemes");
-        console.log("MATCHED SCHEMES:", matchedSchemes);
     };
 
     const handleBack = () => {
@@ -314,6 +319,7 @@ const SchemeVoice: React.FC = () => {
                                         steps={steps}
                                         transcript={currentTranscript}
                                         onTranscriptChange={setCurrentTranscript}
+                                        collectedData={userData}
                                     />
                                     ) : (
                                     <div className="flex-1 flex flex-col justify-center max-w-xl mx-auto">
