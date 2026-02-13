@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify, send_from_directory
+from werkzeug.utils import secure_filename
 from flask_cors import CORS
 from services.explain import explain_scheme
 from services.tts import text_to_speech
@@ -13,6 +14,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from document_verification.aadhar_name_verfication import verify_aadhaar_name
 from document_verification.aadhar_photo_verification import aadhaar_face_verification
+from document_verification.cibil_verification import extract_cibil_score
 app=Flask(__name__)
 CORS(app)
 @app.route("/scheme/explain",methods=['POST'])
@@ -100,5 +102,39 @@ def verify_documents():
             os.remove(aadhar_path)
         if os.path.exists(selfie_path):
             os.remove(selfie_path)
+
+@app.route("/verify_cibil", methods=['POST'])
+def verify_cibil():
+    if 'cibil_file' not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+    
+    file = request.files['cibil_file']
+    filename = secure_filename(file.filename)
+    
+    # Save temporarily
+    temp_dir = os.path.join(os.path.dirname(__file__), "temp_uploads")
+    os.makedirs(temp_dir, exist_ok=True)
+    temp_path = os.path.join(temp_dir, f"{uuid.uuid4()}_{filename}")
+    
+    try:
+        file.save(temp_path)
+        result = extract_cibil_score(temp_path)
+        
+        if "error" in result:
+            return jsonify({"success": False, "message": result["error"]}), 400
+        
+        return jsonify({
+            "success": True,
+            "score": result["score"],
+            "classification": result["classification"],
+            "is_eligible": result["is_eligible"]
+        })
+        
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)}), 500
+        
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
 if __name__=="__main__":
     app.run(port=5070,debug=True,threaded=True,use_reloader=False)

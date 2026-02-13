@@ -12,7 +12,7 @@ interface DocumentVerificationProps {
   onVerified: () => void;
 }
 
-const API_BASE_URL = "http://localhost:5001";
+const API_BASE_URL = "http://localhost:5070";
 
 export function DocumentVerification({
   userName,
@@ -182,9 +182,9 @@ export function DocumentVerification({
         setVerificationFailed(true);
         setStatus(
           data.message ||
-            (language === "ta"
-              ? "ஆவண சரிபார்ப்பு தோல்வியடைந்தது."
-              : "Document verification failed.")
+          (language === "ta"
+            ? "ஆவண சரிபார்ப்பு தோல்வியடைந்தது."
+            : "Document verification failed.")
         );
         return;
       }
@@ -192,9 +192,9 @@ export function DocumentVerification({
       if (data.verified) {
         setStatus(
           data.message ||
-            (language === "ta"
-              ? "ஆவணங்கள் வெற்றிகரமாகச் சரிபார்க்கப்பட்டன."
-              : "Documents verified successfully.")
+          (language === "ta"
+            ? "ஆவணங்கள் வெற்றிகரமாகச் சரிபார்க்கப்பட்டன."
+            : "Documents verified successfully.")
         );
         setTimeout(() => {
           onVerified();
@@ -203,9 +203,9 @@ export function DocumentVerification({
         setVerificationFailed(true);
         setStatus(
           data.message ||
-            (language === "ta"
-              ? "ஆவண சரிபார்ப்பு தோல்வியடைந்தது."
-              : "Document verification failed.")
+          (language === "ta"
+            ? "ஆவண சரிபார்ப்பு தோல்வியடைந்தது."
+            : "Document verification failed.")
         );
       }
     } catch (err) {
@@ -362,9 +362,8 @@ export function DocumentVerification({
         <div className="space-y-4 pt-2">
           {status && (
             <div
-              className={`text-sm text-center ${
-                verificationFailed ? "text-red-600" : "text-emerald-700"
-              }`}
+              className={`text-sm text-center ${verificationFailed ? "text-red-600" : "text-emerald-700"
+                }`}
             >
               {status}
             </div>
@@ -381,8 +380,8 @@ export function DocumentVerification({
                   ? "சரிபார்க்கிறது..."
                   : "Verifying..."
                 : language === "ta"
-                ? "ஆவணங்களை சரிபார்க்கவும்"
-                : "Verify documents"}
+                  ? "ஆவணங்களை சரிபார்க்கவும்"
+                  : "Verify documents"}
             </Button>
 
             {verificationFailed && (
